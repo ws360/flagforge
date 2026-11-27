@@ -93,6 +93,9 @@ h2{font:700 20px/1.2 "Inter Tight",Inter,sans-serif;margin:0 0 10px;letter-spaci
 #q:focus{outline:2px solid var(--selb);outline-offset:1px}
 .cats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 14px}
 .cats button{border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;min-height:34px;padding:0 12px;border-radius:99px;font-size:14px}
+.cats .clr{display:inline-flex;align-items:center;gap:6px;padding:0 12px 0 10px;border-style:dashed;color:var(--mut)}
+.cats .clr svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cats .clr:hover{border-style:solid;border-color:var(--coral);color:var(--ink)}
 .cats button[aria-pressed=true]{background:var(--selb);border-color:var(--selb);color:var(--bg)}
 .cats button:focus-visible,.row:focus-visible{outline:2px solid var(--selb);outline-offset:-2px}
 .list{border-bottom:1px solid var(--line)}
@@ -556,7 +559,7 @@ function renderOut(){
 function renderList(){
   const c=S.cmd,cats=["All",...new Set(F[c].map(f=>f.cat))],full=S.sel[c].length>=MAX,qq=S.q.trim().toLowerCase();
   S.cat=(Array.isArray(S.cat)?S.cat:[]).filter(k=>cats.includes(k));
-  $("cats").innerHTML=cats.map(k=>`<button data-cat="${esc(k)}" aria-pressed="${k==="All"?!S.cat.length:S.cat.includes(k)}">${esc(k)}</button>`).join("");
+  $("cats").innerHTML=cats.map(k=>`<button data-cat="${esc(k)}" aria-pressed="${k==="All"?!S.cat.length:S.cat.includes(k)}">${esc(k)}</button>`).join("")+(S.cat.length||qq?`<button class="clr" id="clr" title="Clear filters" aria-label="Clear filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/><path d="M16 15l5 5M21 15l-5 5"/></svg>Clear</button>`:"");
   const items=F[c].filter(f=>(!S.cat.length||S.cat.includes(f.cat))&&(!qq||[f.s,f.l,f.p,f.d,f.cat].join(" ").toLowerCase().includes(qq)));
   $("rc").textContent=items.length+" of "+F[c].length;
   $("list").innerHTML=items.length?items.map(f=>{const on=has(f.id),dis=full&&!on;return`<button class="row" data-id="${esc(f.id)}" aria-pressed="${on}" aria-disabled="${dis}"><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span><span><span class="fl">${esc(f.s||f.l)}${f.s&&f.l?`<em>${esc(f.l)}${f.p?"="+esc(f.p):""}</em>`:f.p?`<em>=${esc(f.p)}</em>`:""}</span><span class="cat">${esc(f.cat)}</span></span><span class="d">${esc(f.d)}</span></button>`}).join(""):`<p class="none">No flags match “${esc(S.q)}”.</p>`;
@@ -714,6 +717,7 @@ document.addEventListener("click",e=>{
   else if(b.id==="mk-on"){S.mkpath=!S.mkpath;all()}
   else if(b.id==="p-on"){S.prog[S.cmd].on=!S.prog[S.cmd].on;pp=still?.58:0;all()}
   else if(b.dataset.ps){S.prog[S.cmd].style=b.dataset.ps;pp=still?.58:0;all()}
+  else if(b.id==="clr"){S.cat=[];S.q="";$("q").value="";renderList();$("q").focus()}
   else if(b.dataset.cat){const k=b.dataset.cat;S.cat=k==="All"?[]:S.cat.includes(k)?S.cat.filter(x=>x!==k):[...S.cat,k];renderList()}
   else if(b.classList.contains("row")){if(b.getAttribute("aria-disabled")==="true"){toggle(b.dataset.id);return}toggle(b.dataset.id)}
   else if(b.id==="copy"||b.id==="copy2")copy(b,cmdText(),$("cmd"));
