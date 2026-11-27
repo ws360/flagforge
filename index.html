@@ -286,7 +286,7 @@ const DEF={"rsync--chown":"www-data:www-data","rsync--chmod":"D755,F644","rsync-
 "tar--directory":"/var/www","tar--use-compress-program":"zstd -19 -T0","tar--exclude":"*.o","tar--exclude-from":"excludes.txt","tar--files-from":"list.txt","tar--newer":"2026-11-01","tar--strip-components":"1","tar--transform":"s,^build,app,","tar--owner":"0","tar--mtime":"2026-01-01","tar--listed-incremental":"snap.file","tar--checkpoint":"1000"};
 const OPS=["--create","--extract","--list","--append","--update","--catenate","--diff","--delete"];
 const OPFILES={"--create":"html","--extract":"","--list":"","--append":"notes.txt","--update":"html","--catenate":"extra.tar","--diff":"","--delete":"old.log"};
-const COMP={"--gzip":["gzip",".tar.gz"],"--bzip2":["bzip2",".tar.bz2"],"--xz":["xz",".tar.xz"],"--zstd":["zstd",".tar.zst"],"--auto-compress":["the compressor its extension implies",".tar.gz"],"--use-compress-program":["a custom program",".tar.zst"],"--compress":["compress",".tar.Z"]};
+const COMP={"--gzip":["gzip",".tgz"],"--bzip2":["bzip2",".tar.bz2"],"--xz":["xz",".tar.xz"],"--zstd":["zstd",".tar.zst"],"--auto-compress":["the compressor its extension implies",".tgz"],"--use-compress-program":["a custom program",".tar.zst"],"--compress":["compress",".tar.Z"]};
 const A_INC=["--recursive","--links","--perms","--times","--group","--owner","-D"];
 const XONLY=["--keep-old-files","--skip-old-files","--overwrite","--touch","--to-stdout","--strip-components","--same-owner","--no-same-owner","--preserve-permissions"];
 const CONLY=["--remove-files","--sort=name","--mtime","--owner","--dereference","--one-file-system","--newer","--verify","--totals"];
