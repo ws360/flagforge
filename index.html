@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlagForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work tool: precise, calm, nothing decorative
+   IDEA a terminal prompt you assemble token by token, each token labelled like a signal board
+   PICTURE the live command drawn large on deep green, every token explained beneath it
+   COLOUR white ground, deep green #00463c field, lime-white command ink, coral for trouble
+   TYPE Inter Tight 700 titles, Inter text, JetBrains Mono for commands and flags
+   LAYOUT laptop: green build panel left (sticky), flag list right; phone: command, meaning, list, slim command bar */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0b1613);--ink:light-dark(#0f1a17,#e8f0ec);--mut:light-dark(#4a5a55,#a3b6ae);--line:light-dark(#dde5e1,#23332e);--soft:light-dark(#f3f7f5,#12211d);--sel:light-dark(#e6f5c8,#173a2f);--selb:light-dark(#00463c,#8fd3b4);--g:light-dark(#00463c,#003a32);--deep:light-dark(#00332c,#00241f);--lime:#e6f5c8;--coral:#ff6f59;--pale:#cfe3da;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+button{font:inherit}
+.top{background:var(--g);color:#fff;padding:26px max(3vw,16px) 22px}
+.top .in{max-width:1760px;margin:auto;display:flex;flex-wrap:wrap;gap:18px 32px;align-items:flex-end;justify-content:space-between}
+h1{font:700 clamp(30px,4vw,44px)/1.05 "Inter Tight",Inter,sans-serif;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.top p{margin:8px 0 0;color:var(--pale);max-width:46ch}
+.top .tag{display:inline-block;margin:10px 0 0;font:500 15px var(--mono);color:var(--lime);background:rgba(255,255,255,.1);padding:3px 10px;border-radius:6px;letter-spacing:.01em}
+.top .tag+p{margin-top:10px}
+.ctl{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.seg{display:inline-flex;background:rgba(255,255,255,.1);border-radius:10px;padding:4px}
+.seg button{border:0;background:none;cursor:pointer;min-height:40px;padding:0 18px;border-radius:7px;font:600 15px var(--mono);color:#dbeee5}
+.seg button[aria-pressed=true]{background:var(--lime);color:#00463c}
+.seg.sm button{min-height:34px;padding:0 12px;font:500 14px Inter,sans-serif}
+.seg button:focus-visible,.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.count{display:flex;align-items:center;gap:10px;font-weight:600;color:#dbeee5;white-space:nowrap}
+.pips{display:flex;gap:6px}
+.pips i{width:14px;height:14px;border-radius:50%;border:2px solid var(--lime)}
+.pips i.on{background:var(--lime)}
+#msg{flex-basis:100%;min-height:1.4em;color:#ffd2c9;font-size:14px;margin-top:-8px;text-align:end}
+.shake{animation:sh .35s}
+@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+main{max-width:1760px;margin:auto;padding:24px max(3vw,16px) 96px;display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
+.build{background:var(--g);color:#fff;border-radius:14px;padding:clamp(16px,2.4vw,26px)}
+@media(min-width:900px){main{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.build{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}
+.cmdbox{background:var(--deep);border-radius:10px;padding:18px 18px 14px}
+#cmd{display:block;font:500 clamp(18px,2.1vw,23px)/1.6 var(--mono);color:var(--lime);overflow-wrap:anywhere;margin:0}
+#cmd .pr,.cl .pr{color:#5fa58f;user-select:none}
+.cl{display:block;font:500 clamp(16px,1.8vw,20px)/1.6 var(--mono);color:var(--lime);overflow-wrap:anywhere}
+.usum{font-size:16px;margin:14px 0 8px}
+.lrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-size:15px;color:var(--pale)}
+.lrow code{font:500 15px var(--mono);color:var(--lime);background:var(--deep);padding:6px 10px;border-radius:6px;overflow-wrap:anywhere}
+.btn.sm2{min-height:36px;padding:0 14px;font-size:14px}
+.tk{border-radius:4px;padding:1px 2px;transition:background .15s}
+.tk.n{color:#fff;font-weight:600}
+.tk.o{color:#9fd8c0}
+.tk.hl{background:rgba(230,245,200,.22)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:14px}
+.btn{border:0;cursor:pointer;min-height:40px;padding:0 18px;border-radius:8px;background:var(--lime);color:#00463c;font-weight:600}
+.btn:hover{background:#fff}
+h2{font:700 20px/1.2 "Inter Tight",Inter,sans-serif;margin:0 0 10px;letter-spacing:-.01em}
+.sec{margin-top:22px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:0;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 6px 0 12px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff;font:500 14px var(--mono)}
+.chip span{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.14);font:600 15px Inter,sans-serif}
+.chip:hover span{background:var(--coral);color:#2a0b05}
+.empty{color:var(--pale);margin:0}
+.fields{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);grid-auto-flow:row dense}
+.fields>.o1{order:1}.fields>.o2{order:2}.fields>.o3{order:3}.fields>.o4{order:4}.fields>.o5{order:5}
+@media(min-width:601px){.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fields>.c1{grid-column:1}.fields>.c2{grid-column:2}}
+.fields>div{display:flex;flex-direction:column;justify-content:flex-end}
+.fields label{display:block;font-size:13px;line-height:1.35;color:var(--pale);margin-bottom:6px}
+.fields label small{display:block;font-size:13px}
+.fields label b{font:600 13px var(--mono);color:var(--lime)}
+.fields input{width:100%;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid #2f7565;background:var(--deep);color:#fff;font:16px var(--mono)}
+.fields input:focus{outline:2px solid var(--lime);outline-offset:1px}
+#sum{font-size:17px;margin:0 0 12px}
+.note{display:flex;gap:10px;align-items:baseline;margin:8px 0;font-size:15px}
+.note b{flex:none;font-size:13px;font-weight:600;padding:1px 9px;border-radius:99px}
+.note.warn b{background:var(--coral);color:#2a0b05}
+.note.tip b{background:var(--lime);color:#00463c}
+.bd{display:grid;grid-template-columns:minmax(0,15em) minmax(0,1fr);border-top:1px solid rgba(255,255,255,.15);margin-top:14px}
+.bd>div{display:contents}
+.bd code,.bd p{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.15);margin:0}
+.bd code{font:600 15px var(--mono);color:var(--lime);padding-right:14px;overflow-wrap:anywhere}
+.bd p{color:#e2efe9;font-size:15px}
+.bd>div:hover code,.bd>div:hover p{background:rgba(255,255,255,.05)}
+@media(max-width:600px){.bd{grid-template-columns:minmax(0,1fr)}.bd code{border-bottom:0;padding-bottom:0}}
+.pick h2{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.pick h2 small{font:500 14px Inter,sans-serif;color:var(--mut)}
+#q{width:100%;min-height:46px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:16px Inter,sans-serif}
+#q:focus{outline:2px solid var(--selb);outline-offset:1px}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 14px}
+.cats button{border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;min-height:34px;padding:0 12px;border-radius:99px;font-size:14px}
+.cats button[aria-pressed=true]{background:var(--selb);border-color:var(--selb);color:var(--bg)}
+.cats button:focus-visible,.row:focus-visible{outline:2px solid var(--selb);outline-offset:-2px}
+.list{border-bottom:1px solid var(--line)}
+@media(min-width:1400px){.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}.none{grid-column:1/-1}}
+.row{display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 12px;width:100%;padding:12px 12px;border:0;border-top:1px solid var(--line);background:none;color:inherit;text-align:start;cursor:pointer}
+.row:hover{background:var(--soft)}
+.row[aria-pressed=true]{background:var(--sel)}
+.row[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.box{width:20px;height:20px;margin-top:2px;border:2px solid var(--selb);border-radius:5px;display:grid;place-items:center}
+.row[aria-pressed=true] .box{background:var(--selb)}
+.box svg{width:12px;height:12px;stroke:var(--bg);stroke-width:3;fill:none;visibility:hidden}
+.row[aria-pressed=true] .box svg{visibility:visible}
+.fl{font:600 15px var(--mono)}
+.fl em{font-style:normal;font-weight:400;color:var(--mut);margin-left:8px}
+.cat{font-size:13px;color:var(--mut);margin-left:10px;white-space:nowrap}
+.d{grid-column:2;font-size:15px;color:var(--mut)}
+.none{padding:24px 12px;color:var(--mut);border-top:1px solid var(--line)}
+.tk.p{color:#fff;font-weight:600}
+.prow{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+.switch{border:0;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:0;background:none;color:#fff;font-weight:600}
+.switch i{position:relative;width:46px;height:26px;border-radius:99px;background:rgba(255,255,255,.2);flex:none;transition:background .15s}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-pressed=true] i{background:var(--lime)}
+.switch[aria-pressed=true] i::after{background:#00463c;transform:translateX(20px)}
+.switch:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+.seg.off{opacity:.45;pointer-events:none}
+.term{margin:12px 0 0;background:var(--deep);border-radius:8px;padding:12px 14px;font:13.5px/1.55 var(--mono);color:#e2efe9;overflow-x:auto;white-space:pre;min-height:3.4em}
+.term.dots{white-space:pre-wrap;overflow-wrap:anywhere}
+.cap{font-size:13px;color:var(--pale);margin:6px 0 0}
+.mini{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--g);color:var(--lime);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:none;align-items:center;gap:12px}
+.mini code{flex:1;font:14px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini.show{display:flex}
+@media(min-width:900px){.mini.show{display:none}}
+@media(prefers-reduced-motion:reduce){.shake{animation:none}.tk,.switch i,.switch i::after{transition:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><h1>FlagForge</h1><div class="tag" title="lɪnʊks = Linux, said out loud">lɪnʊks-FlagForge:~#</div><p>rsync &amp; tar commands, explained. Pick up to ten flags. The command and what it does update as you go.</p></div>
+  <div class="ctl">
+    <div class="seg" role="group" aria-label="Command"><button id="c-rsync" data-cmd="rsync">rsync</button><button id="c-tar" data-cmd="tar">tar</button></div>
+    <div class="count" id="count"><div class="pips" id="pips"></div><span id="cnum"></span></div>
+  </div>
+  <div id="msg" aria-live="polite"></div>
+</div></header>
+<main>
+  <section class="build" aria-label="Your command">
+    <div class="cmdbox" id="cmdbox"><code id="cmd"></code>
+      <div class="bar">
+        <div class="seg sm" role="group" aria-label="Flag style"><button id="s-short" data-long="0">Short flags</button><button id="s-long" data-long="1">Long flags</button></div>
+        <button class="btn" id="copy">Copy</button>
+      </div>
+    </div>
+    <div class="sec"><h2>Selected flags</h2><div class="chips" id="chips"></div></div>
+    <div class="sec"><h2>Progress</h2>
+      <div class="prow"><button class="switch" id="p-on" aria-pressed="false"><i aria-hidden="true"></i>Monitor progress</button><div class="seg sm" role="group" aria-label="Progress style" id="p-style"></div><span class="cap" style="margin:0">Doesn't use any of your 10 flags.</span></div>
+      <pre class="term" id="pview" aria-label="Sample progress output"></pre><p class="cap" id="pcap"></p>
+    </div>
+    <div class="sec"><h2>Paths and values</h2><div class="prow" id="mkrow" style="margin-bottom:14px"><button class="switch" id="mk-on" aria-pressed="false"><i aria-hidden="true"></i>Create missing folders (--mkpath)</button><span class="cap" style="margin:0">Needs rsync 3.2.3+. Doesn't use any of your 10 flags.</span></div><div class="fields" id="fields"></div></div>
+    <div class="sec"><h2>What it does</h2><p id="sum"></p><div id="notes"></div><div class="bd" id="bd"></div></div>
+    <div class="sec" id="unp"><h2>Unpack command</h2>
+      <p class="empty" id="uoff">Pick -c (create) to get the matching command for unpacking the archive.</p>
+      <div id="uon">
+        <div class="cmdbox"><code id="ucmd" class="cl"></code><div class="bar"><span class="cap" id="ucap" style="margin:0"></span><button class="btn" id="ucopy">Copy</button></div></div>
+        <div class="fields" style="margin-top:14px"><div><label for="f-unp"><b>Unpack into</b><small id="uhint">(blank = current directory)</small></label><input id="f-unp" spellcheck="false" autocomplete="off"></div><div><label for="f-urem"><b>REMOTE</b><small>(user@host, blank = this machine)</small></label><input id="f-urem" placeholder="user@backup-server" spellcheck="false" autocomplete="off"></div></div>
+        <p class="usum" id="usum"></p><div id="unotes"></div>
+        <div class="lrow"><span>Check what's inside first:</span><code id="lcmd"></code><button class="btn sm2" id="lcopy">Copy</button></div>
+      </div>
+    </div>
+  </section>
+  <section class="pick" aria-label="Flags">
+    <h2>Flags <small id="rc"></small></h2>
+    <input id="q" type="search" placeholder="Search flags or descriptions" aria-label="Search flags">
+    <div class="cats" id="cats"></div>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+<div class="mini" id="mini" aria-hidden="true"><code id="minicmd"></code><button class="btn" id="copy2">Copy</button></div>
+<script>
+{
+const RAW={rsync:[
+["-a","--archive","Common","Archive mode: same as -rlptgoD (recursive, keep symlinks, permissions, times, group, owner, devices). The usual starting point."],
+["-v","--verbose","Output","List files as they transfer; repeat (-vv) for more detail."],
+["-h","--human-readable","Output","Show sizes as K, M, G instead of raw bytes."],
+["-z","--compress","Transfer","Compress data in transit. Helps over slow links; skip it on a fast LAN."],
+["-n","--dry-run","Safety","Show what would happen without changing anything. Pair with -v or -i."],
+["-P",null,"Transfer","Same as --partial --progress: resumable transfers with a progress bar."],
+[null,"--progress","Output","Show per-file progress during the transfer."],
+[null,"--info=progress2","Output","Show one overall progress line for the whole transfer instead of per file."],
+[null,"--partial","Transfer","Keep partially transferred files so an interrupted copy can resume."],
+["-r","--recursive","Common","Recurse into directories (included in -a)."],
+["-l","--links","Links","Copy symlinks as symlinks (included in -a)."],
+["-L","--copy-links","Links","Follow symlinks and copy the files they point to."],
+["-H","--hard-links","Links","Preserve hard links (not included in -a)."],
+["-p","--perms","Preservation","Preserve permissions (included in -a)."],
+["-t","--times","Preservation","Preserve modification times (included in -a). Without it, every run re-checks every file."],
+["-g","--group","Preservation","Preserve group (included in -a)."],
+["-o","--owner","Preservation","Preserve owner; needs root on the receiving side (included in -a)."],
+["-D",null,"Preservation","Same as --devices --specials: preserve device and special files (included in -a)."],
+["-A","--acls","Preservation","Preserve ACLs (implies -p)."],
+["-X","--xattrs","Preservation","Preserve extended attributes."],
+[null,"--numeric-ids","Preservation","Keep numeric UID/GID instead of mapping by user/group name."],
+[null,"--chown=USER:GROUP","Preservation","Set owner and group of files on the receiver."],
+[null,"--chmod=CHMOD","Preservation","Change permissions on the receiver using chmod-style rules."],
+["-u","--update","Transfer","Skip files that are newer on the receiver."],
+["-c","--checksum","Transfer","Compare files by checksum instead of size and mod time. Slower but thorough."],
+[null,"--size-only","Transfer","Compare files by size only; ignore mod times."],
+[null,"--ignore-existing","Transfer","Skip files that already exist on the receiver."],
+[null,"--existing","Transfer","Only update files that already exist on the receiver; create nothing new."],
+["-W","--whole-file","Transfer","Copy whole files without the delta algorithm (default for local copies)."],
+[null,"--inplace","Transfer","Write updates directly into the destination file instead of a temp copy."],
+[null,"--bwlimit=RATE","Transfer","Limit bandwidth (default unit KiB/s; suffixes like 5M allowed)."],
+[null,"--max-size=SIZE","Filtering","Skip files larger than SIZE (also --min-size)."],
+["-x","--one-file-system","Filtering","Don't cross filesystem boundaries."],
+["-R","--relative","Transfer","Keep the full source path on the receiver."],
+[null,"--delete","Deletion","Delete files on the receiver that no longer exist on the source. Test with -n first."],
+[null,"--delete-after","Deletion","Delete extraneous files after the transfer finishes, not before."],
+[null,"--delete-excluded","Deletion","Also delete excluded files from the receiver."],
+[null,"--remove-source-files","Deletion","Delete source files after they transfer successfully (directories stay)."],
+[null,"--exclude=PATTERN","Filtering","Skip files matching PATTERN. Repeatable."],
+[null,"--exclude-from=FILE","Filtering","Read exclude patterns from FILE, one per line."],
+[null,"--include=PATTERN","Filtering","Don't exclude files matching PATTERN; rules apply in order."],
+[null,"--files-from=FILE","Filtering","Transfer only the paths listed in FILE."],
+["-f","--filter=RULE","Filtering","Add a filter rule; '- PATTERN' excludes, '+ PATTERN' includes. -F reads .rsync-filter files."],
+["-C","--cvs-exclude","Filtering","Skip files CVS-style ignores (.git, *.o, core, and so on)."],
+["-e","--rsh=COMMAND","Remote","Choose the remote shell, e.g. ssh with a custom port or key."],
+["-s","--protect-args","Remote","Send filenames without remote-shell interpretation, so spaces and special characters are safe (newer versions also call it --secluded-args)."],
+[null,"--timeout=SECONDS","Remote","Give up if no data moves for this many seconds."],
+["-b","--backup","Backup","Rename files that would be overwritten or deleted (adds ~ by default)."],
+[null,"--backup-dir=DIR","Backup","Put backed-up files in DIR instead of beside the originals (use with -b)."],
+[null,"--link-dest=DIR","Backup","Hard-link unchanged files to DIR: space-saving snapshot backups."],
+["-i","--itemize-changes","Output","Print a change summary code for each file (what changed and why)."],
+["-q","--quiet","Output","Suppress non-error messages (good for cron)."],
+[null,"--stats","Output","Print a transfer summary at the end."],
+[null,"--log-file=FILE","Output","Log what rsync does to FILE."]],
+tar:[
+["-c","--create","Operation","Create a new archive."],
+["-x","--extract","Operation","Extract files from an archive (alias --get)."],
+["-t","--list","Operation","List an archive's contents without extracting."],
+["-r","--append","Operation","Add files to the end of an existing uncompressed archive."],
+["-u","--update","Operation","Append only files newer than the copy already in the archive (uncompressed only)."],
+["-A","--catenate","Operation","Append another tar archive's contents (alias --concatenate)."],
+["-d","--diff","Operation","Compare archive members with the filesystem (alias --compare)."],
+[null,"--delete","Operation","Delete members from an uncompressed archive."],
+["-f","--file=ARCHIVE","Archive","Name the archive file; use - for stdin/stdout. Put it last in bundled flags (-czf, not -cfz)."],
+["-v","--verbose","Output","List files as they're processed; -vv adds details like ls -l."],
+["-C","--directory=DIR","Paths","Change to DIR before creating or extracting."],
+["-z","--gzip","Compression","Filter through gzip (.tar.gz / .tgz)."],
+["-j","--bzip2","Compression","Filter through bzip2 (.tar.bz2)."],
+["-J","--xz","Compression","Filter through xz (.tar.xz): smaller, slower."],
+[null,"--zstd","Compression","Filter through zstd (.tar.zst): fast with good ratio (GNU tar 1.31+)."],
+["-a","--auto-compress","Compression","Pick the compressor from the archive's file extension."],
+["-I","--use-compress-program=PROG","Compression","Use any compressor program, with its own options."],
+["-Z","--compress","Compression","Filter through legacy compress (.tar.Z)."],
+[null,"--exclude=PATTERN","Selection","Skip files matching PATTERN. Repeatable."],
+["-X","--exclude-from=FILE","Selection","Read exclude patterns from FILE."],
+[null,"--exclude-vcs","Selection","Skip version-control folders like .git and .svn."],
+["-T","--files-from=FILE","Selection","Read the list of files to archive from FILE."],
+[null,"--wildcards","Selection","Allow wildcard patterns when naming members to extract or list."],
+["-N","--newer=DATE","Selection","Only archive files newer than DATE or a reference file (alias --after-date)."],
+[null,"--strip-components=N","Paths","Drop N leading path components when extracting."],
+[null,"--transform=EXPR","Paths","Rename paths with a sed-style expression (alias --xform)."],
+["-P","--absolute-names","Paths","Keep leading / in paths instead of stripping it. Use with care on extract."],
+["-h","--dereference","Paths","Archive the files symlinks point to, not the links."],
+[null,"--one-file-system","Selection","Don't cross filesystem boundaries while archiving."],
+["-p","--preserve-permissions","Permissions","Restore exact permissions on extract, ignoring umask (default for root; alias --same-permissions)."],
+[null,"--same-owner","Permissions","Restore original ownership on extract (default for root)."],
+[null,"--no-same-owner","Permissions","Extract files as the current user (default for non-root)."],
+[null,"--numeric-owner","Permissions","Store and restore numeric UID/GID instead of names."],
+[null,"--owner=NAME","Permissions","Record NAME as the owner of files added (see also --group)."],
+[null,"--acls","Permissions","Store and restore POSIX ACLs."],
+[null,"--xattrs","Permissions","Store and restore extended attributes."],
+[null,"--selinux","Permissions","Store and restore SELinux contexts."],
+["-k","--keep-old-files","Extraction","Don't overwrite existing files; treat them as errors."],
+[null,"--skip-old-files","Extraction","Don't overwrite existing files; skip them silently."],
+[null,"--overwrite","Extraction","Overwrite existing files when extracting."],
+["-m","--touch","Extraction","Don't restore modification times; use the extraction time."],
+["-O","--to-stdout","Extraction","Extract files to standard output instead of disk."],
+["-W","--verify","Archive","Verify the archive after writing it (uncompressed only)."],
+[null,"--remove-files","Archive","Delete the original files after adding them to the archive."],
+["-g","--listed-incremental=FILE","Backup","Incremental backup: record state in FILE and archive only what changed since."],
+["-S","--sparse","Archive","Handle sparse files efficiently (e.g. VM disk images)."],
+["-M","--multi-volume","Archive","Create or read an archive split across volumes."],
+[null,"--sort=name","Archive","Store members in name order (useful for reproducible archives)."],
+[null,"--mtime=DATE","Archive","Set the stored modification time for all members."],
+["-w","--interactive","Output","Ask for confirmation before each action (alias --confirmation)."],
+[null,"--totals","Output","Print total bytes written after creating an archive."],
+[null,"--checkpoint=N","Output","Show progress every N records (pair with --checkpoint-action=dot)."]]};
+
+const DEF={"rsync--chown":"www-data:www-data","rsync--chmod":"D755,F644","rsync--bwlimit":"5M","rsync--max-size":"100M","rsync--exclude":"node_modules","rsync--exclude-from":"excludes.txt","rsync--include":"*.jpg","rsync--files-from":"list.txt","rsync--filter":"- *.tmp","rsync--rsh":"ssh -p 2222","rsync--timeout":"60","rsync--backup-dir":"../old","rsync--link-dest":"../daily.1","rsync--log-file":"rsync.log",
+"tar--directory":"/opt/unetlab","tar--use-compress-program":"zstd -19 -T0","tar--exclude":"*.o","tar--exclude-from":"excludes.txt","tar--files-from":"list.txt","tar--newer":"2026-11-01","tar--strip-components":"1","tar--transform":"s,^build,app,","tar--owner":"0","tar--mtime":"2026-01-01","tar--listed-incremental":"snap.file","tar--checkpoint":"1000"};
+const OPS=["--create","--extract","--list","--append","--update","--catenate","--diff","--delete"];
+const OPFILES={"--create":"addons","--extract":"","--list":"","--append":"notes.txt","--update":"addons","--catenate":"extra.tar","--diff":"","--delete":"old.log"};
+const COMP={"--gzip":["gzip",".tar.gz"],"--bzip2":["bzip2",".tar.bz2"],"--xz":["xz",".tar.xz"],"--zstd":["zstd",".tar.zst"],"--auto-compress":["the compressor its extension implies",".tar.gz"],"--use-compress-program":["a custom program",".tar.zst"],"--compress":["compress",".tar.Z"]};
+const A_INC=["--recursive","--links","--perms","--times","--group","--owner","-D"];
+const XONLY=["--keep-old-files","--skip-old-files","--overwrite","--touch","--to-stdout","--strip-components","--same-owner","--no-same-owner","--preserve-permissions"];
+const CONLY=["--remove-files","--sort=name","--mtime","--owner","--dereference","--one-file-system","--newer","--verify","--totals"];
+const MAX=10,K="flagbuilder-v2";
+
+const F={},IDX={};
+for(const c in RAW){F[c]=RAW[c].map(([s,l,cat,d],i)=>{let base=l,p=null;const m=l&&l.match(/^(--[\w-]+)=(.+)$/);if(m&&/^[A-Z][A-Z:_]*$/.test(m[2])){base=m[1];p=m[2]}return{id:base||s,s,l:base,p,cat,d,i}});IDX[c]=Object.fromEntries(F[c].map(f=>[f.id,f]))}
+
+let S={cmd:"rsync",long:false,q:"",cat:"All",sel:{rsync:["--archive","--verbose","--human-readable"],tar:["--create","--gzip","--verbose","--file","--directory"]},val:{},op:{rsync:{dst:"/ws360Archive/112426/addons-backup",files:"addons",dir:"/opt/unetlab"},tar:{arc:"/ws360Archive/112426/addons-backup.tgz",files:"addons"}},prog:{rsync:{on:true,style:"overall"},tar:{on:false,style:"pv"}},mkpath:false};
+const PSTY={rsync:[["overall","Overall"],["file","Per file"]],tar:[["pv","Progress bar (pv)"],["dots","Built-in dots"]]};
+const PDESC={"@mk":"Creates any missing folders along the Destination-Directory path before copying (rsync 3.2.3+).","@p2":"One live line for the whole transfer: bytes copied, percent done, speed and time left.","@nir":"Scans every file before copying, so the overall percentage is accurate from the start (costs a little memory and startup time).","@pg":"A live progress line for each file as it copies.","@ckpt":"A checkpoint every 1000 records (about 10 MB).","@dot":"Prints a dot at each checkpoint, so a growing row of dots shows tar is working.","@pv":"pv draws the progress bar with percent, speed and ETA. The size, measured with du, lets it show a percentage.","@pvin":"pv reads the archive and shows a bar with percent, speed and ETA while it feeds tar.","@comp":"Compresses after pv, so the bar tracks the uncompressed data that du measured.","@out":"Writes the finished archive."};
+const ZCMD={"--gzip":"gzip","--bzip2":"bzip2","--xz":"xz","--zstd":"zstd","--compress":"compress"};
+try{const v=JSON.parse(localStorage.getItem(K)||"null");if(v&&v.sel&&v.op&&v.val){for(const c of ["rsync","tar"])v.sel[c]=(v.sel[c]||[]).filter(id=>IDX[c][id]).slice(0,MAX);if(!(v.prog&&v.prog.rsync&&v.prog.tar))delete v.prog;if(!v.op.rsync||v.op.rsync.files===undefined){v.op.rsync=S.op.rsync;v.sel.rsync=S.sel.rsync}S={...S,...v,q:"",cat:"All"}}}catch(e){}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+
+const $=id=>document.getElementById(id);
+const esc=v=>String(v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const q=v=>v===""?"''":/^[A-Za-z0-9_@%+=:,.\/~-]+$/.test(v)?v:"'"+v.replace(/'/g,"'\\''")+"'";
+const selF=()=>S.sel[S.cmd].map(id=>IDX[S.cmd][id]).filter(Boolean).sort((a,b)=>a.i-b.i);
+const has=id=>S.sel[S.cmd].includes(id);
+const arcName=()=>{const a=S.op.tar.arc.trim();if(a)return a;const c=Object.keys(COMP).find(has);return "backup"+(c?COMP[c][1]:".tar")};
+const valOf=f=>S.cmd==="tar"&&f.id==="--file"?arcName():(S.val[S.cmd+f.id]??DEF[S.cmd+f.id]??"");
+const isRemote=v=>/^[^\/\s:]+:/.test(v);
+const words=v=>v.trim()?v.trim().split(/\s+/):[];
+
+function srcList(){
+  const d=S.op.rsync.dir.trim(),ws=words(S.op.rsync.files);
+  const L=ws.length?ws.map(w=>!d||w.startsWith("/")||isRemote(w)?w:d.replace(/\/+$/,"")+"/"+w):d?[d]:[];
+  const dst=S.op.rsync.dst.trim();
+  if(L.length===1&&dst&&!dst.endsWith("/")&&!L[0].endsWith("/")&&!looksFile(L[0]))L[0]+="/";
+  return L;
+}
+function remHost(){return(S.op.rsync.remote||"").trim().replace(/:+$/,"")}
+function dstFull(){const r=remHost(),d=S.op.rsync.dst.trim();return r&&!isRemote(d)?r+":"+d:d}
+function looksFile(p){return /[^.\/]\.[A-Za-z0-9]{1,8}$/.test(p.replace(/\/+$/,"").split("/").pop())}
+function syncDst(){
+  const ws=words(S.op.rsync.files),first=ws[0]||S.op.rsync.dir.trim();if(!first)return;
+  let nm=first.replace(/\/+$/,"").split("/").pop();if(/^\.+$/.test(nm))nm="";nm=nm.replace(/[^\w.-]+/g,"_");
+  const file=ws.length&&!first.endsWith("/")&&looksFile(first);
+  const nb=file?nm.replace(/(\.[A-Za-z0-9]{1,8})$/,"-backup$1"):(nm?nm+"-":"")+"backup";
+  const a=S.op.rsync.dst.trim();let dir,base;
+  if(!a||a.endsWith("/")){dir=a;base=""}else{const i=a.lastIndexOf("/");dir=i>=0?a.slice(0,i+1):"";base=i>=0?a.slice(i+1):a}
+  if(base&&!/(?:^|-)backup(\.[A-Za-z0-9]{1,8})?$/.test(base))return;
+  S.op.rsync.dst=dir+nb;
+  const el=$("f-dst");if(el&&el!==document.activeElement)el.value=S.op.rsync.dst;
+}
+function tarMode(){
+  const p=S.prog.tar;if(!p.on)return"none";
+  const op=selF().find(f=>OPS.includes(f.id));if(!op)return"none";
+  if(p.style==="pv"){if(op.id==="--create")return"pvc";if(["--extract","--list","--diff"].includes(op.id))return"pvx"}
+  return"dots";
+}
+function tarHost(){return(S.op.tar.remote||"").trim().replace(/:+$/,"")}
+function tarRemote(){const h=tarHost();if(!h)return"";const op=selF().find(f=>OPS.includes(f.id));return op&&["--create","--extract","--list","--diff"].includes(op.id)?h:""}
+const sshCat=w=>{const h=tarRemote(),a=arcName();return[{t:"ssh",k:"n",ids:["@ssh"]},{t:q(h),k:"o",ids:["@ssh"]},{t:q(w?"cat > "+q(a):"cat "+q(a)),k:"o",ids:["@ssh"]}]};
+const piped=()=>S.cmd==="tar"&&(["pvc","pvx"].includes(tarMode())||!!tarRemote());
+function compCmd(id){
+  if(ZCMD[id])return ZCMD[id];
+  if(id==="--use-compress-program")return valOf(IDX.tar[id]).trim()||null;
+  if(id==="--auto-compress"){const a=arcName();return /\.(tgz|gz)$/.test(a)?"gzip":/\.(tbz2?|bz2)$/.test(a)?"bzip2":/\.(txz|xz)$/.test(a)?"xz":/\.(tzst|zst)$/.test(a)?"zstd":/\.Z$/.test(a)?"compress":null}
+  return null;
+}
+function duExpr(){
+  const ws=words(S.op.tar.files).map(q);if(!ws.length)return"";
+  const dir=has("--directory")?valOf(IDX.tar["--directory"]):"";
+  const du=ws.length>1?"du -sbc "+ws.join(" ")+" | tail -1 | cut -f1":"du -sb "+ws[0]+" | cut -f1";
+  return"$("+(dir?"cd "+q(dir)+" && ":"")+du+")";
+}
+function flagToks(fs,file,arcT,T){
+  const one=(f,lng)=>(lng||!f.s)?(f.p?f.l+"="+q(valOf(f)):f.l):f.s+(f.p?" "+q(valOf(f)):"");
+  if(S.long){for(const f of fs)if(f.id!=="--file")T.push({t:one(f,true),k:"f",ids:[f.id]});if(file)T.push({t:"--file="+arcT,k:"f",ids:["--file"]});return}
+  const lop=fs.find(f=>S.cmd==="tar"&&f.id==="--delete");if(lop)T.push({t:"--delete",k:"f",ids:["--delete"]});
+  const rk=f=>S.cmd!=="tar"?({"--archive":0,"--recursive":0,"--compress":1,"--verbose":2}[f.id]??3):OPS.includes(f.id)?0:COMP[f.id]?1:2;
+  const b=fs.filter(f=>f.s&&!f.p).sort((x,y)=>rk(x)-rk(y)||x.i-y.i);
+  const letters=b.map(f=>f.s.slice(1)).join("")+(file?"f":"");
+  if(letters)T.push({t:"-"+letters,k:"f",ids:[...b.map(f=>f.id),...(file?["--file"]:[])]});
+  if(file)T.push({t:arcT,k:"o",ids:["--file"]});
+  for(const f of fs)if(f.s&&f.p&&f.id!=="--file")T.push({t:one(f,false),k:"f",ids:[f.id]});
+  for(const f of fs)if(!f.s&&f!==lop)T.push({t:one(f,false),k:"f",ids:[f.id]});
+}
+function tokens(){
+  const P={t:"|",k:"p",ids:[]};
+  if(S.cmd==="rsync"){
+    const T=[{t:"rsync",k:"n",ids:[]}];flagToks(selF(),false,"",T);if(S.mkpath)T.push({t:"--mkpath",k:"f",ids:["@mk"]});
+    const pr=S.prog.rsync;
+    if(pr.on&&pr.style==="overall"){if(!has("--info=progress2"))T.push({t:"--info=progress2",k:"f",ids:["@p2"]});T.push({t:"--no-inc-recursive",k:"f",ids:["@nir"]})}
+    if(pr.on&&pr.style==="file"&&!has("--progress")&&!has("-P"))T.push({t:"--progress",k:"f",ids:["@pg"]});
+    const ss=srcList(),dst=dstFull();if(ss.length)for(const x of ss)T.push({t:q(x),k:"o",ids:["@src"]});else T.push({t:"SRC",k:"o",ids:["@src"]});T.push({t:dst?q(dst):"DEST",k:"o",ids:["@dst"]});
+    return T;
+  }
+  const m=tarMode(),comp=Object.keys(COMP).find(has),rem=tarRemote(),pipe=m==="pvc"||m==="pvx"||!!rem;
+  const fs=m==="pvc"?selF().filter(f=>!COMP[f.id]):selF();
+  const core=[{t:"tar",k:"n",ids:[]}];flagToks(fs,has("--file")||pipe,pipe?"-":q(arcName()),core);
+  if(m==="dots"){if(!has("--checkpoint"))core.push({t:"--checkpoint=1000",k:"f",ids:["@ckpt"]});core.push({t:"--checkpoint-action=dot",k:"f",ids:["@dot"]})}
+  for(const w of words(S.op.tar.files))core.push({t:q(w),k:"o",ids:["@files"]});
+  if(rem&&!has("--create"))return m==="pvx"?[...sshCat(false),P,{t:"pv",k:"n",ids:["@pvin"]},P,...core]:[...sshCat(false),P,...core];
+  if(m==="pvx")return[{t:"pv",k:"n",ids:["@pvin"]},{t:q(arcName()),k:"o",ids:["@pvin"]},P,...core];
+  if(rem&&m!=="pvc")return[...core,P,...sshCat(true)];
+  if(m==="pvc"){
+    const T=[...core,P,{t:"pv",k:"n",ids:["@pv"]}],du=duExpr();if(du)T.push({t:(S.long?"--size ":"-s ")+du,k:"f",ids:["@pv"]});
+    const z=comp&&compCmd(comp);if(z)T.push(P,{t:z,k:"n",ids:["@comp"]});
+    if(rem)T.push(P,...sshCat(true));else T.push({t:">",k:"p",ids:[]},{t:q(arcName()),k:"o",ids:["@out"]});return T;
+  }
+  return core;
+}
+const cmdText=()=>tokens().map(t=>t.t).join(" ");
+
+function rsyncInfo(){
+  const ss=srcList(),N=[],src=ss[0]||"SRC",dst=dstFull()||"DEST",remote=ss.some(isRemote)||isRemote(dst);
+  const rec=has("--archive")||has("--recursive"),del=["--delete","--delete-after","--delete-excluded"].some(has);
+  const what=ss.length?ss.join(", "):"SRC",nm=src.replace(/\/+$/,"").split("/").pop();
+  const named=ss.length===1&&!S.op.rsync.dst.trim().endsWith("/");
+  let s=named?(remote?"Syncs ":"Copies ")+src.replace(/\/+$/,"")+" to "+dst+(src.endsWith("/")?" (its contents go straight into "+dst.split("/").pop()+")":"")+(remote?" over SSH":""):(remote?"Syncs ":"Copies ")+(ss.length===1&&src.endsWith("/")?"the contents of "+what:what)+" into "+dst+(!src.endsWith("/")&&ss.length===1&&nm?" (as "+dst.replace(/\/+$/,"")+"/"+nm+")":"")+(remote?" over SSH":"");
+  if(!rec&&!has("--files-from"))s+=", top-level files only";
+  if(has("--archive"))s+=", keeping permissions, times, owners and symlinks";
+  if(has("--update"))s+=", skipping files that are newer at the destination";
+  if(has("--ignore-existing"))s+=", skipping files that already exist there";
+  if(has("--existing"))s+=", updating only files that already exist there";
+  if(has("--checksum"))s+=", comparing files by checksum";
+  if(del)s+=", and removes anything at the destination that isn't in the source"+(has("--delete-excluded")?" (excluded files too)":"");
+  if(has("--remove-source-files"))s+=", deleting each source file once it has arrived";
+  s+=".";if(has("--dry-run"))s+=" Because of -n this is a dry run: it only reports what it would do.";
+  const red=A_INC.filter(has);if(has("--archive")&&red.length)N.push(["tip",red.map(id=>IDX.rsync[id].s).join(", ")+" "+(red.length>1?"are":"is")+" already included in -a."]);
+  if(has("--acls")&&has("--perms"))N.push(["tip","-A already implies -p."]);
+  if(has("-P")&&(has("--partial")||has("--progress")))N.push(["tip","-P already means --partial --progress."]);
+  if(has("--quiet")&&has("--verbose"))N.push(["warn","-q and -v work against each other. Pick one."]);
+  if(has("--copy-links")&&has("--links"))N.push(["tip","-L overrides -l: symlinks are followed, not copied as links."]);
+  if(has("--checksum")&&has("--size-only"))N.push(["warn","-c and --size-only are competing comparison methods. Pick one."]);
+  if(has("--existing")&&has("--ignore-existing"))N.push(["warn","--existing with --ignore-existing skips every file, so nothing is copied."]);
+  if(del&&!rec)N.push(["warn","--delete does nothing without -r or -a, because rsync won't descend into folders."]);
+  if((has("--delete-after")||has("--delete-excluded"))&&!has("--delete"))N.push(["tip","This flag implies --delete."]);
+  if(!src.endsWith("/")&&rec&&del)N.push(["warn","SRC has no trailing slash, so the folder is created inside DEST and --delete compares against that subfolder."]);
+  if((del||has("--remove-source-files"))&&!has("--dry-run"))N.push(["warn","This removes files. Run it once with -n first to preview."]);
+  if(has("--owner")||has("-D"))N.push(["tip","-o and -D need root (sudo) on the receiving side to take effect."]);
+  if(has("--compress")&&!remote)N.push(["tip","-z only helps over a network; both paths here are local."]);
+  if(remHost()&&!has("--rsh"))N.push(["tip","rsync connects to "+remHost()+" over SSH on port 22. For another port or key, add -e (e.g. ssh -p 2222)."]);
+  if((has("--rsh")||has("--timeout"))&&!remote)N.push(["tip","This only matters when SRC or DEST is remote (host:path)."]);
+  if(!rec&&!has("--files-from")&&!del)N.push(["tip","Add -a (or -r) to copy folders recursively."]);
+  {const D=S.op.rsync.dst.trim().replace(/\/+$/,""),i=D.lastIndexOf("/"),par=i>0?D.slice(0,i):"";if(S.mkpath)N.push(["tip","--mkpath needs rsync 3.2.3 or newer"+(remHost()?" on both machines":"")+". Check with rsync --version."]);else if(par&&remHost()&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist on "+remHost()+", run ssh "+q(remHost())+" mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."]);else if(par&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist, run mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."])}
+  const pr=S.prog.rsync;
+  if(pr.on){
+    s+=pr.style==="overall"?" A live line shows overall percent done, speed and time left.":" Each file shows a live progress line as it copies.";
+    if(has("--dry-run"))N.push(["tip","With -n nothing is transferred, so the progress display won't move. Remove -n for the real run."]);
+    if(pr.style==="overall"&&(has("--verbose")||has("--itemize-changes")))N.push(["tip","-v and -i print file names that push the progress line around. Drop them for a clean display."]);
+    if(pr.style==="overall"&&(has("--progress")||has("-P")))N.push(["tip","--progress (or -P) is also selected, which brings back per-file lines."]);
+    if(!has("--human-readable"))N.push(["tip","Add -h to show sizes as K, M and G in the progress line."]);
+    if(has("--quiet"))N.push(["warn","-q hides the progress display."]);
+  }
+  return[s,N];
+}
+
+function tarInfo(){
+  const m=tarMode(),rem=tarRemote(),N=[],fs=selF(),op=fs.find(f=>OPS.includes(f.id)),file=has("--file")||m==="pvc"||m==="pvx"||!!rem,arc=arcName();
+  const comps=Object.keys(COMP).filter(has),comp=comps[0],cn=comp?(comp==="--use-compress-program"?valOf(IDX.tar[comp]).split(" ")[0]:COMP[comp][0]):"";
+  const files=words(S.op.tar.files).join(" "),dir=has("--directory")?valOf(IDX.tar["--directory"]):"";
+  const into=file?arc:"standard input";let s;
+  if(!op){s="This isn't a complete command yet: tar needs one operation.";N.push(["warn","Pick exactly one operation: -c, -x, -t, -r, -u, -A, -d or --delete."])}
+  else switch(op.id){
+    case"--create":s="Creates "+(file?"the archive "+arc:"an archive on standard output")+(comp?", compressed with "+cn:"")+", containing "+(files||"nothing yet")+(dir?" (paths read from inside "+dir+")":"")+".";if(!files&&!has("--files-from"))N.push(["warn","Name at least one file or folder to archive."]);break;
+    case"--extract":s="Unpacks "+into+" into "+(dir||"the current directory")+(files?", extracting only "+files:"")+(comp?", decompressing with "+cn:"")+".";break;
+    case"--list":s="Lists what's inside "+into+(files?", showing only "+files:"")+" without extracting anything.";break;
+    case"--append":s="Adds "+(files||"FILES")+" to the end of "+into+".";break;
+    case"--update":s="Adds files from "+(files||"FILES")+" that are newer than their copies already in "+into+".";break;
+    case"--catenate":s="Appends the contents of the archive "+(files||"OTHER.tar")+" onto "+into+".";break;
+    case"--diff":s="Compares "+into+" with the files on disk and reports what differs.";break;
+    case"--delete":s="Removes "+(files||"MEMBERS")+" from inside "+into+".";break;
+  }
+  if(has("--verbose")&&op)s+=" Each file is listed as it's processed.";
+  if(op&&!file)N.push(["warn","No -f, so tar uses standard input/output (or the $TAPE device). Add -f to name the archive."]);
+  if(comps.length>1)N.push(["warn","Pick one compression method: "+comps.map(id=>IDX.tar[id].s||id).join(", ")+" conflict."]);
+  if(comp&&op&&["--append","--update","--catenate","--delete"].includes(op.id))N.push(["warn","tar can't append to or edit a compressed archive."]);
+  if(comp&&has("--verify"))N.push(["warn","-W can't verify a compressed archive."]);
+  if(comp&&op&&["--extract","--list"].includes(op.id)&&file&&m!=="pvx"&&!rem)N.push(["tip","GNU tar detects compression when reading a file, so the compression flag is optional here."]);
+  if(rem){
+    s+=has("--create")?" The archive is sent over SSH and saved on "+rem+".":" The archive is read from "+rem+" over SSH.";
+    if(has("--create")){const i=arc.lastIndexOf("/");if(i>0)N.push(["tip","The folder must already exist on "+rem+": run ssh "+q(rem)+" mkdir -p "+q(arc.slice(0,i))+" first."])}
+    if(!has("--create")&&comp)N.push(["tip","Keep the compression flag: tar can't detect compression when it reads from a pipe."]);
+    if(m==="pvx")N.push(["tip","pv can't see the remote file's size, so it shows speed and bytes but no percentage."]);
+    if(has("--verify"))N.push(["warn","-W can't verify an archive sent over SSH."]);
+  }
+  if(tarHost()&&!rem&&op)N.push(["warn","REMOTE only works with -c, -x, -t or -d. This operation edits the archive in place, so it runs on this machine."]);
+  if(m==="pvx"&&comp&&!rem)N.push(["tip","Keep the compression flag: tar can't detect compression when it reads from a pipe."]);
+  if(m==="pvx"&&!comp&&/\.(t?gz|tgz|bz2|tbz2?|xz|txz|zst|tzst|Z)$/.test(arc))N.push(["warn","Add the matching compression flag (-z, -j, -J or --zstd). tar can't detect it when reading from a pipe."]);
+  if(m==="pvc"||m==="pvx"){
+    s+=" A progress bar from pv shows percent done, speed and time left.";
+    N.push(["tip","pv isn't always installed: sudo apt install pv (Debian/Ubuntu) or sudo dnf install pv (Fedora)."]);
+    if(has("--verbose"))N.push(["tip","-v prints file names on the same screen as the bar. Drop it for a clean bar."]);
+  }
+  if(m==="pvc"){
+    if(!words(S.op.tar.files).length)N.push(["tip","With no files named, du can't measure a total, so pv shows speed and bytes but no percentage."]);
+    else if(["--exclude","--exclude-from","--exclude-vcs"].some(has))N.push(["tip","du still counts excluded files, so the bar may finish short of 100%."]);
+    if(has("--verify"))N.push(["warn","-W can't verify an archive written to a pipe."]);
+    if(comp&&!compCmd(comp))N.push(["warn","Couldn't tell which compressor to use from the archive name, so the output isn't compressed."]);
+  }
+  if(m==="dots")s+=" A dot is printed about every 10 MB to show progress.";
+  if(S.prog.tar.on&&S.prog.tar.style==="pv"&&m==="dots")N.push(["tip","pv can't follow an operation that edits an archive in place, so built-in dots are used instead."]);
+  if(S.prog.tar.on&&!op)N.push(["tip","Progress is added once you pick an operation."]);
+  const xo=XONLY.filter(has),co=CONLY.filter(has),nm=id=>IDX.tar[id].s||IDX.tar[id].l;
+  if(op&&op.id==="--create"&&xo.length)N.push(["tip",xo.map(nm).join(", ")+" only affect"+(xo.length>1?"":"s")+" extraction."]);
+  if(op&&["--extract","--list"].includes(op.id)&&co.length)N.push(["tip",co.map(nm).join(", ")+" only affect"+(co.length>1?"":"s")+" archive creation."]);
+  if(has("--keep-old-files")&&has("--overwrite"))N.push(["warn","-k and --overwrite contradict each other."]);
+  if(has("--same-owner")&&has("--no-same-owner"))N.push(["warn","--same-owner and --no-same-owner contradict each other."]);
+  if(has("--remove-files"))N.push(["warn","Deletes the originals after archiving. Check the archive before relying on it."]);
+  if(has("--absolute-names")&&op&&op.id==="--extract")N.push(["warn","Extracting with -P can write anywhere, including over system files."]);
+  return[s,N];
+}
+
+function breakdown(T){
+  const rows=[];
+  for(const t of T)for(const id of t.ids){
+    if(id==="@src"){if(rows.some(r=>r[0]===id))continue;const ss=srcList(),v=ss.join(" ")||"SRC",d=S.op.rsync.dir.trim();rows.push([id,v,"Source"+(d&&words(S.op.rsync.files).length?": the target inside "+d+". ":". ")+(v.endsWith("/")?(ss.length===1&&!S.op.rsync.dst.trim().endsWith("/")?"The trailing slash puts its contents straight into Destination-Directory, so the copy is named "+S.op.rsync.dst.trim().split("/").pop()+".":"The trailing slash copies its contents."):ss.length===1&&looksFile(v)?"A single file, copied under the Destination-Directory name.":"No trailing slash, so the folder itself is copied.")]);continue}
+    if(id==="@dst"){const v=(S.cmd==="rsync"?dstFull():S.op.rsync.dst.trim())||"DEST";rows.push([id,v,(S.cmd==="rsync"&&!v.endsWith("/")?"Destination: the name and location of the backup copy":"Destination")+(isRemote(v)?", on a remote host (user@host:path), reached over SSH.":", on this machine.")]);continue}
+    if(id==="@files"){if(!rows.some(r=>r[0]==="@files"))rows.push([id,words(S.op.tar.files).join(" "),has("--extract")||has("--list")?"Only these members are extracted or listed.":"Files and folders the operation works on."]);continue}
+    if(rows.some(r=>r[0]===id))continue;
+    if(PDESC[id]){rows.push([id,T.filter(x=>x.ids.includes(id)).map(x=>x.t).join(" "),PDESC[id]]);continue}
+    if(PDESC[id]===undefined&&id==="@ssh"){rows.push([id,T.filter(x=>x.ids.includes(id)).map(x=>x.t).join(" "),has("--create")?"Sends the archive over SSH to "+tarRemote()+" and saves it as Destination-Directory there.":"Streams the archive from "+tarRemote()+" over SSH into tar."]);continue}
+    if(id==="--file"&&piped()){rows.push([id,S.long?"--file=-":"-f -",has("--create")?"Writes the archive into the pipe (standard output) instead of a file.":"Reads the archive from the pipe (standard input)."]);continue}
+    const f=IDX[S.cmd][id];const form=(S.long||!f.s)?(f.p?f.l+"="+q(valOf(f)):f.l):f.s+(f.p?" "+q(valOf(f)):"");
+    rows.push([id,form,f.d]);
+  }
+  return rows;
+}
+
+function renderTop(){
+  for(const c of ["rsync","tar"])$("c-"+c).setAttribute("aria-pressed",S.cmd===c);
+  $("s-short").setAttribute("aria-pressed",!S.long);$("s-long").setAttribute("aria-pressed",S.long);
+  const n=S.sel[S.cmd].length;$("pips").innerHTML=Array.from({length:MAX},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("");
+  $("cnum").textContent=n+" of "+MAX+" flags";
+}
+function renderChips(){
+  const fs=selF();
+  $("chips").innerHTML=fs.length?fs.map(f=>`<button class="chip" data-rm="${esc(f.id)}" aria-label="Remove ${esc(f.s||f.l)}">${esc(f.s||f.l)}${f.s&&f.l?` <small style="opacity:.7">${esc(f.l)}</small>`:""}<span aria-hidden="true">×</span></button>`).join(""):`<p class="empty">No flags yet. Pick some from the list.</p>`;
+}
+function renderFields(){
+  const fs=selF(),h=[];
+  const inp=(id,label,val,ph,c)=>`<div${c?` class="${c}"`:""}><label for="${id}">${label}</label><input id="${id}" value="${esc(val)}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></div>`;
+  if(S.cmd==="rsync"){h.push(inp("f-rdir","<b>Source-Directory</b>",S.op.rsync.dir,"/opt/unetlab","o1 c1"),inp("f-rem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.rsync.remote||"","user@backup-server","o2 c2"),inp("f-dst","<b>Destination-Directory</b>",S.op.rsync.dst,"/ws360Archive/112426/","o3 c1"),inp("f-rfiles","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.rsync.files,"addons","o4 c2"))}
+  else{if(has("--file")||piped()||tarHost())h.push(inp("f-arc","<b>Destination-Directory</b>",S.op.tar.arc,arcName(),"o3 c1"));h.push(inp("f-trem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.tar.remote||"","user@backup-server","o2 c2"),inp("f-files","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.tar.files,"addons","o4 c2"))}
+  const LBL={"tar--directory":"<b>Source-Directory</b>"};
+  for(const f of fs)if(f.p&&!(S.cmd==="tar"&&f.id==="--file"))h.push(inp("v-"+f.id.replace(/\W/g,""),LBL[S.cmd+f.id]||`<b>${esc(f.s||f.l)}</b> ${esc(f.p)}`,valOf(f),DEF[S.cmd+f.id]||f.p,S.cmd==="tar"&&f.id==="--directory"?"o1 c1":"o5").replace("<input ",`<input data-v="${esc(f.id)}" `));
+  $("fields").innerHTML=h.join("");
+}
+function renderOut(){
+  const T=tokens();
+  $("cmd").innerHTML=`<span class="pr">$ </span>`+T.map(t=>`<span class="tk ${t.k}" data-ids="${esc(t.ids.join(" "))}">${esc(t.t)}</span>`).join(" ");
+  $("minicmd").textContent="$ "+cmdText();
+  const[s,N]=S.cmd==="rsync"?rsyncInfo():tarInfo();
+  $("sum").textContent=s;
+  $("notes").innerHTML=N.map(([k,t])=>`<p class="note ${k}"><b>${k==="warn"?"Watch out":"Tip"}</b><span>${esc(t)}</span></p>`).join("");
+  renderUnpack();
+  $("bd").innerHTML=breakdown(T).map(([id,form,d])=>`<div data-id="${esc(id)}"><code>${esc(form)}</code><p>${esc(d)}</p></div>`).join("");
+}
+function renderList(){
+  const c=S.cmd,cats=["All",...new Set(F[c].map(f=>f.cat))],full=S.sel[c].length>=MAX,qq=S.q.trim().toLowerCase();
+  if(!cats.includes(S.cat))S.cat="All";
+  $("cats").innerHTML=cats.map(k=>`<button data-cat="${esc(k)}" aria-pressed="${S.cat===k}">${esc(k)}</button>`).join("");
+  const items=F[c].filter(f=>(S.cat==="All"||f.cat===S.cat)&&(!qq||[f.s,f.l,f.p,f.d,f.cat].join(" ").toLowerCase().includes(qq)));
+  $("rc").textContent=items.length+" of "+F[c].length;
+  $("list").innerHTML=items.length?items.map(f=>{const on=has(f.id),dis=full&&!on;return`<button class="row" data-id="${esc(f.id)}" aria-pressed="${on}" aria-disabled="${dis}"><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span><span><span class="fl">${esc(f.s||f.l)}${f.s&&f.l?`<em>${esc(f.l)}${f.p?"="+esc(f.p):""}</em>`:f.p?`<em>=${esc(f.p)}</em>`:""}</span><span class="cat">${esc(f.cat)}</span></span><span class="d">${esc(f.d)}</span></button>`}).join(""):`<p class="none">No flags match “${esc(S.q)}”.</p>`;
+}
+let pp=0,hold=0;
+const two=n=>String(Math.floor(n)).padStart(2,"0"),hms=s=>Math.floor(s/3600)+":"+two(s/60%60)+":"+two(s%60),pad=(v,n)=>String(v).padStart(n);
+const hum=b=>b>=1e9?(b/1e9).toFixed(2)+"G":b>=1e6?(b/1e6).toFixed(2)+"M":(b/1e3).toFixed(2)+"K";
+function previewMode(){
+  if(S.cmd==="rsync")return S.prog.rsync.on?S.prog.rsync.style:"off";
+  if(!S.prog.tar.on)return"off";const m=tarMode();
+  return m==="none"?"noop":m==="dots"?"dots":(m==="pvc"&&!words(S.op.tar.files).length)?"pvnos":"pv";
+}
+function drawPreview(){
+  const p=pp,m=previewMode(),el=$("pview"),h=has("--human-readable");let t="",cap="";
+  const num=b=>h?hum(b):Math.round(b).toLocaleString("en-US");
+  if(m==="off"){t="Progress monitoring is off.";}
+  else if(m==="noop"){t="Pick an operation to add progress.";}
+  else if(m==="overall"){const tot=2.95e9,n=2995,x=Math.round(p*n),sp=96+Math.sin(p*20)*4;
+    t=pad(num(p*tot),14)+pad(Math.floor(p*100)+"%",5)+pad(sp.toFixed(2)+"MB/s",13)+"    "+hms((1-p)*30)+" (xfr#"+x+", to-chk="+(n-x)+"/"+n+")";
+    cap="Sample output. rsync prints a live line with a percentage rather than a drawn bar.";}
+  else if(m==="file"){const fl=[["photos/IMG_2041.jpg",4194304],["photos/IMG_2042.jpg",3870720],["docs/report.pdf",812544],["video/demo.mp4",52428800]];
+    const cur=Math.min(3,Math.floor(p*4)),L=[];
+    fl.forEach(([nm,sz],i)=>{if(i>cur)return;const fp=i<cur||p>=1?1:p*4-cur,sp=(38+i*7+Math.sin(p*30)*2).toFixed(2);
+      L.push(nm,pad(num(fp*sz),14)+pad(Math.floor(fp*100)+"%",5)+pad(sp+"MB/s",12)+"    "+hms((1-fp)*(sz/4e7))+(fp>=1?" (xfr#"+(i+1)+", to-chk="+(3-i)+"/4)":""))});
+    t=L.join("\n");cap="Sample output: a progress line under each file name.";}
+  else if(m==="pv"){const w=28,n=Math.round(p*w),bar=p>=1?"=".repeat(w):"=".repeat(Math.max(0,n-1))+">"+" ".repeat(w-Math.max(n,1));
+    t=(p*2.37).toFixed(2)+"GiB "+hms(p*24)+" ["+(96+Math.sin(p*17)*5).toFixed(1)+"MiB/s] ["+bar+"] "+pad(Math.floor(p*100),3)+"% ETA "+hms((1-p)*24);
+    cap="Sample output from pv: bytes, elapsed time, speed, bar, percent and ETA.";}
+  else if(m==="pvnos"){const w=28,i=Math.floor(p*60)%(w-3);t=(p*2.37).toFixed(2)+"GiB "+hms(p*24)+" ["+(96+Math.sin(p*17)*5).toFixed(1)+"MiB/s] ["+" ".repeat(i)+"<=>"+" ".repeat(w-3-i)+"]";
+    cap="Sample output from pv without a known size: it can't show a percentage.";}
+  else{t=".".repeat(Math.round(p*120))||".";cap="Sample output: tar's built-in progress is a growing row of dots.";}
+  el.textContent=t;el.classList.toggle("dots",m==="dots");$("pcap").textContent=cap;
+}
+function renderProg(){
+  $("mkrow").hidden=S.cmd!=="rsync";$("mk-on").setAttribute("aria-pressed",!!S.mkpath);
+  const pr=S.prog[S.cmd];$("p-on").setAttribute("aria-pressed",pr.on);
+  $("p-style").classList.toggle("off",!pr.on);
+  $("p-style").innerHTML=PSTY[S.cmd].map(([v,l])=>`<button data-ps="${v}" aria-pressed="${pr.style===v}"${pr.on?"":" tabindex=\"-1\""}>${l}</button>`).join("");
+  drawPreview();
+}
+const still=matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(still)pp=.58;else setInterval(()=>{if(pp>=1){if(++hold>12){pp=0;hold=0}}else pp=Math.min(1,pp+.012);drawPreview()},150);
+function unpackInfo(){
+  const comp=Object.keys(COMP).find(has),arc=arcName(),orig=has("--directory")?valOf(IDX.tar["--directory"]):"";
+  const dir=(S.unpackDir??orig).trim(),L=S.long,pr=S.prog.tar,pv=pr.on&&pr.style==="pv",dots=pr.on&&pr.style==="dots";
+  const zs={"--gzip":"z","--bzip2":"j","--xz":"J","--compress":"Z"}[comp]||"";
+  const zl=comp==="--zstd"?"--zstd":comp==="--use-compress-program"?(L?"--use-compress-program=":"-I ")+q(valOf(IDX.tar[comp])):"";
+  const keep=["--acls","--xattrs","--selinux","--numeric-owner"].filter(has);
+  const rh=tarRemote(),rc=rh?"ssh "+q(rh)+" "+q("cat "+q(arc)):"",uh=(S.unpackRemote||"").trim().replace(/:+$/,""),same=!!uh&&uh===rh;
+  const v=has("--verbose");
+  const tarX=src=>{const X=["tar"];
+    if(L){X.push("--extract");if(zs)X.push({"z":"--gzip","j":"--bzip2","J":"--xz","Z":"--compress"}[zs]);if(zl)X.push(zl);if(v)X.push("--verbose");X.push("--file="+src);if(dir)X.push("--directory="+q(dir))}
+    else{X.push("-x"+zs+(v?"v":"")+"f",src);if(dir)X.push("-C",q(dir));if(zl)X.push(zl)}
+    X.push(...keep);if(dots)X.push("--checkpoint="+(has("--checkpoint")?valOf(IDX.tar["--checkpoint"]):"1000"),"--checkpoint-action=dot");return X};
+  const T=[];
+  if(same){const inner=(pv?"pv "+q(arc)+" | ":"")+tarX(pv?"-":q(arc)).join(" ");T.push("ssh",...(pv?["-t"]:[]),q(uh),q(inner))}
+  else{
+    if(rh)T.push(rc,"|");else if(pv)T.push("pv",q(arc),"|");else if(uh)T.push("cat",q(arc),"|");
+    if(rh&&pv)T.push("pv","|");
+    const piped=!!(rh||pv||uh);
+    if(uh)T.push("ssh",q(uh),q(tarX("-").join(" ")));else T.push(...tarX(piped?"-":q(arc)));
+  }
+  const la=rh?"-":q(arc),lst=(rh?rc+" | ":"")+(L?"tar --list"+(zs?" "+{"z":"--gzip","j":"--bzip2","J":"--xz","Z":"--compress"}[zs]:"")+(zl?" "+zl:"")+" --file="+la:"tar -t"+zs+"f "+la+(zl?" "+zl:""));
+  const items=words(S.op.tar.files),where=dir||(uh?"the home folder on "+uh:"the current directory"),N=[];
+  let s="Unpacks "+arc+(rh&&!same?" from "+rh+" (streamed over SSH)":"")+" into "+where+(uh&&dir?" on "+uh:"")+(items.length?", recreating "+items.join(", ")+" inside it":"")+(dir&&dir===orig&&!uh?" (back where it came from)":"")+".";
+  if(same)s+=" Everything runs on "+uh+", so the archive doesn't cross the network.";
+  else if(uh&&!rh)s+=" The archive is streamed from this machine to "+uh+" over SSH.";
+  if(pv)s+=" pv shows a progress bar while tar reads the archive.";
+  N.push(["warn","Files that already exist there"+(uh?" on "+uh:"")+" are overwritten. Add -k to keep them, or unpack somewhere else first."]);
+  if(uh&&dir)N.push(["tip","tar -C needs the folder to exist on "+uh+": run ssh "+q(uh)+" mkdir -p "+q(dir)+" first."]);
+  else if(dir&&dir!==orig)N.push(["tip","tar -C needs the folder to exist: run mkdir -p "+q(dir)+" first."]);
+  if(same&&pv)N.push(["tip","pv must be installed on "+uh+". ssh -t gives it a terminal so the bar can show."]);
+  if(uh&&dir&&/^\/(opt|usr|etc|var|srv)\b/.test(dir))N.push(["tip","Writing to "+dir+" on "+uh+" may need root: log in as root or put sudo before tar inside the quotes."]);
+  if(has("--absolute-names"))N.push(["warn","The archive was made with -P, so its paths start with /. Without -P tar strips the / and unpacks them under "+where+"."]);
+  if(comp==="--auto-compress")N.push(["tip","-a only applies when creating; when reading a file, tar works out the compression itself."]);
+  if((pv||rh||uh)&&!(same&&!pv))N.push(["tip","Keep the compression flag in the command: tar can't detect compression when it reads from a pipe."]);
+  return{cmd:T.join(" "),lst,s,N};
+}
+const RKEEP=["--archive","--recursive","--links","--copy-links","--hard-links","--perms","--times","--group","--owner","-D","--acls","--xattrs","--numeric-ids","--chown","--chmod","--verbose","--human-readable","--compress","-P","--progress","--info=progress2","--partial","--checksum","--whole-file","--inplace","--bwlimit","--rsh","--protect-args","--timeout","--itemize-changes","--quiet","--stats"];
+const RDROP=["--delete","--delete-after","--delete-excluded","--remove-source-files","--dry-run"];
+function rsyncRestore(){
+  const ss=srcList();if(!ss.length)return null;
+  const fs=selF().filter(f=>RKEEP.includes(f.id)),T=[];flagToks(fs,false,"",T);const fl=T.map(t=>t.t);
+  if(S.mkpath)fl.push("--mkpath");
+  const pr=S.prog.rsync;
+  if(pr.on&&pr.style==="overall"){if(!has("--info=progress2"))fl.push("--info=progress2");fl.push("--no-inc-recursive")}
+  if(pr.on&&pr.style==="file"&&!has("--progress")&&!has("-P"))fl.push("--progress");
+  const draw=S.op.rsync.dst.trim();let bh=remHost(),bp=draw;
+  if(!bh&&isRemote(draw)){const i=draw.indexOf(":");bh=draw.slice(0,i);bp=draw.slice(i+1)}
+  const base=bp.replace(/\/+$/,"")||bp;let rs,orig;
+  if(ss.length===1&&draw&&!draw.endsWith("/")){const s0=ss[0];if(s0.endsWith("/")){rs=[base+"/"];orig=s0.replace(/\/+$/,"")}else{rs=[bp];orig=s0}}
+  else if(ss.length===1&&ss[0].endsWith("/")){rs=[base+"/"];orig=ss[0].replace(/\/+$/,"")}
+  else{rs=ss.map(x=>base+"/"+x.replace(/\/+$/,"").split("/").pop());const p0=ss[0].replace(/\/+$/,"");orig=p0.includes("/")?p0.slice(0,p0.lastIndexOf("/")+1)||"/":"./"}
+  const dest=((S.rUnpackDir??orig).trim())||orig,uh=(S.rUnpackRemote||"").trim().replace(/:+$/,"");
+  let cmd;
+  if(uh&&bh){const inner=["rsync",...fl,...rs.map(x=>q(uh===bh?x:bh+":"+x)),q(dest)].join(" ");cmd="ssh "+(uh===bh?"":"-A ")+q(uh)+" "+q(inner)}
+  else cmd=["rsync",...fl,...rs.map(x=>q(bh?bh+":"+x:x)),q(uh?uh+":"+dest:dest)].join(" ");
+  const lst="rsync -h --list-only "+rs.map(x=>q(bh?bh+":"+x:x)).join(" ");
+  const N=[];
+  let s="Restores the backup "+rs.join(", ")+(bh?" from "+bh:"")+" to "+dest+(uh?" on "+uh:"")+(dest===orig&&!uh?" (back where it came from)":"")+".";
+  if(uh&&bh&&uh===bh)s+=" Everything runs on "+uh+", so nothing crosses the network.";
+  N.push(["warn","Files with the same name at "+dest+(uh?" on "+uh:"")+" are replaced by the backup copies. Add -n to preview first."]);
+  N.push(["tip","Files added there since the backup are left alone. Add --delete for an exact copy of the backup."]);
+  const dr=RDROP.filter(has);if(dr.length)N.push(["tip","Left out of the restore on purpose: "+dr.map(id=>IDX.rsync[id].s||id).join(", ")+"."]);
+  if(uh&&bh&&uh!==bh)N.push(["tip",uh+" needs SSH access to "+bh+". ssh -A forwards your SSH keys for that hop."]);
+  if(dest!==orig&&!S.mkpath)N.push(["tip","rsync only creates the last folder of "+dest+". Turn on Create missing folders (--mkpath) if its parent might not exist."]);
+  if(uh&&/^\/(opt|usr|etc|var|srv)\b/.test(dest))N.push(["tip","Writing to "+dest+" on "+uh+" may need root: log in as root or use sudo rsync."]);
+  return{cmd,lst,s,N,orig,dest,uh};
+}
+const curUnpack=()=>S.cmd==="rsync"?rsyncRestore():unpackInfo();
+function renderUnpack(){
+  const r=S.cmd==="rsync",box=$("unp");box.hidden=false;
+  const on=r?srcList().length>0:has("--create");
+  $("uoff").textContent=r?"Fill in Source-Directory or Target File or Folder to get the matching restore command.":"Pick -c (create) to get the matching command for unpacking the archive.";
+  $("uoff").hidden=on;$("uon").hidden=!on;if(!on)return;
+  const u=curUnpack(),orig=r?u.orig:has("--directory")?valOf(IDX.tar["--directory"]):"";
+  $("ucmd").innerHTML=`<span class="pr">$ </span>${esc(u.cmd)}`;
+  const ud=r?u.dest:(S.unpackDir??orig).trim(),rv=r?S.rUnpackRemote:S.unpackRemote;
+  const uh=(rv||"").trim();const ue=$("f-urem");if(ue!==document.activeElement)ue.value=rv||"";
+  $("ucap").textContent=uh?"Unpacks on "+uh.replace(/:+$/,"")+".":!ud?"Unpacks where you run it.":ud===orig?(r?"Restores to the original location.":"Restores to the original -C folder."):(r?"Restores to a different folder.":"Unpacks to a different folder.");
+  $("uhint").textContent=r?"(blank = original location)":"(blank = current directory)";
+  const el=$("f-unp");if(el){if(el!==document.activeElement)el.value=(r?S.rUnpackDir:S.unpackDir)??orig;el.placeholder=orig||"current directory"}
+  $("usum").textContent=u.s;
+  $("unotes").innerHTML=u.N.map(([k,t])=>`<p class="note ${k}"><b>${k==="warn"?"Watch out":"Tip"}</b><span>${esc(t)}</span></p>`).join("");
+  $("lcmd").textContent=u.lst;
+}
+const all=()=>{renderTop();renderChips();renderProg();renderFields();renderOut();renderList();save()};
+
+function syncArc(){
+  if(!has("--create"))return;
+  const w=words(S.op.tar.files)[0];if(!w)return;
+  let nm=w.replace(/\/+$/,"").split("/").pop()||"root";if(/^\.+$/.test(nm))nm="";
+  nm=nm.replace(/[^\w.-]+/g,"_");
+  const a=S.op.tar.arc,i=a.lastIndexOf("/"),dir=i>=0?a.slice(0,i+1):"",base=i>=0?a.slice(i+1):a;
+  const m=base.match(/(?:^|-)backup(\.[A-Za-z0-9.]+)?$/);if(a&&!m)return;
+  const c=Object.keys(COMP).find(has),ext=(m&&m[1])||(c?COMP[c][1]:".tar");
+  S.op.tar.arc=dir+(nm?nm+"-":"")+"backup"+ext;
+  const el=$("f-arc");if(el&&el!==document.activeElement)el.value=S.op.tar.arc;
+}
+let mt;const say=t=>{$("msg").textContent=t;clearTimeout(mt);mt=setTimeout(()=>$("msg").textContent="",3500)};
+function toggle(id){
+  const c=S.cmd,sel=S.sel[c];
+  if(sel.includes(id)){S.sel[c]=sel.filter(x=>x!==id);all();return}
+  let next=[...sel];
+  if(c==="tar"&&OPS.includes(id)){const old=next.filter(x=>OPS.includes(x));next=next.filter(x=>!OPS.includes(x));if(old.length)say("tar takes one operation, so "+old.map(x=>IDX.tar[x].s||x).join(", ")+" was swapped out.");S.op.tar.files=OPFILES[id]}
+  if(next.length>=MAX){say("The limit is "+MAX+" flags. Remove one first.");const el=$("count");el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");return}
+  next.push(id);S.sel[c]=next;if(c==="tar")syncArc();all();
+}
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.cmd){S.cmd=b.dataset.cmd;S.q="";$("q").value="";all()}
+  else if(b.dataset.long){S.long=b.dataset.long==="1";renderTop();renderOut();save()}
+  else if(b.dataset.rm)toggle(b.dataset.rm);
+  else if(b.id==="mk-on"){S.mkpath=!S.mkpath;all()}
+  else if(b.id==="p-on"){S.prog[S.cmd].on=!S.prog[S.cmd].on;pp=still?.58:0;all()}
+  else if(b.dataset.ps){S.prog[S.cmd].style=b.dataset.ps;pp=still?.58:0;all()}
+  else if(b.dataset.cat){S.cat=b.dataset.cat;renderList()}
+  else if(b.classList.contains("row")){if(b.getAttribute("aria-disabled")==="true"){toggle(b.dataset.id);return}toggle(b.dataset.id)}
+  else if(b.id==="copy"||b.id==="copy2")copy(b,cmdText(),$("cmd"));
+  else if(b.id==="ucopy")copy(b,curUnpack().cmd,$("ucmd"));
+  else if(b.id==="lcopy")copy(b,curUnpack().lst,$("lcmd"));
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="q"){S.q=t.value;renderList();return}
+  if(t.id==="f-urem"){if(S.cmd==="rsync")S.rUnpackRemote=t.value;else S.unpackRemote=t.value;renderUnpack();save();return}
+  if(t.id==="f-unp"&&S.cmd==="rsync"){const o=rsyncRestore()?.orig;S.rUnpackDir=t.value===o?null:t.value;renderUnpack();save();return}
+  if(t.id==="f-unp"){const o=has("--directory")?valOf(IDX.tar["--directory"]):"";S.unpackDir=t.value===o?null:t.value;renderUnpack();save();return}
+  if(t.id==="f-rfiles"){S.op.rsync.files=t.value;syncDst()}else if(t.id==="f-rdir"){S.op.rsync.dir=t.value;syncDst()}else if(t.id==="f-dst")S.op.rsync.dst=t.value;else if(t.id==="f-rem")S.op.rsync.remote=t.value;
+  else if(t.id==="f-arc")S.op.tar.arc=t.value;else if(t.id==="f-trem")S.op.tar.remote=t.value;else if(t.id==="f-files"){S.op.tar.files=t.value;syncArc()}
+  else if(t.dataset.v)S.val[S.cmd+t.dataset.v]=t.value;else return;
+  renderOut();drawPreview();save();
+});
+$("bd").addEventListener("mouseover",e=>{const r=e.target.closest("[data-id]");document.querySelectorAll(".tk").forEach(k=>k.classList.toggle("hl",!!r&&k.dataset.ids.split(" ").includes(r.dataset.id)))});
+$("bd").addEventListener("mouseleave",()=>document.querySelectorAll(".tk.hl").forEach(k=>k.classList.remove("hl")));
+
+async function copy(b,txt,node){
+  const lbl="Copy";
+  try{await navigator.clipboard.writeText(txt);b.textContent="Copied"}
+  catch(err){const r=document.createRange();r.selectNodeContents(node);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Selected: press Ctrl+C"}
+  setTimeout(()=>b.textContent=lbl,1600);
+}
+const io=new IntersectionObserver(([en])=>$("mini").classList.toggle("show",!en.isIntersecting));io.observe($("cmdbox"));
+syncDst();
+all();
+}
+</script>
+</body>
+</html>
