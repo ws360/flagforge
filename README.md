@@ -1,6 +1,6 @@
 # FlagForge
 
-`lɪnʊks-FlagForge:~#`
+`lɪnʊks@FlagForge:~#`
 
 **rsync & tar commands, explained.** FlagForge is a single-page web app for building `rsync` and `tar` commands without memorizing flags.
 
