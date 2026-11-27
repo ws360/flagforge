@@ -283,9 +283,9 @@ tar:[
 [null,"--checkpoint=N","Output","Show progress every N records (pair with --checkpoint-action=dot)."]]};
 
 const DEF={"rsync--chown":"www-data:www-data","rsync--chmod":"D755,F644","rsync--bwlimit":"5M","rsync--max-size":"100M","rsync--exclude":"node_modules","rsync--exclude-from":"excludes.txt","rsync--include":"*.jpg","rsync--files-from":"list.txt","rsync--filter":"- *.tmp","rsync--rsh":"ssh -p 2222","rsync--timeout":"60","rsync--backup-dir":"../old","rsync--link-dest":"../daily.1","rsync--log-file":"rsync.log",
-"tar--directory":"/opt/unetlab","tar--use-compress-program":"zstd -19 -T0","tar--exclude":"*.o","tar--exclude-from":"excludes.txt","tar--files-from":"list.txt","tar--newer":"2026-11-01","tar--strip-components":"1","tar--transform":"s,^build,app,","tar--owner":"0","tar--mtime":"2026-01-01","tar--listed-incremental":"snap.file","tar--checkpoint":"1000"};
+"tar--directory":"/var/www","tar--use-compress-program":"zstd -19 -T0","tar--exclude":"*.o","tar--exclude-from":"excludes.txt","tar--files-from":"list.txt","tar--newer":"2026-11-01","tar--strip-components":"1","tar--transform":"s,^build,app,","tar--owner":"0","tar--mtime":"2026-01-01","tar--listed-incremental":"snap.file","tar--checkpoint":"1000"};
 const OPS=["--create","--extract","--list","--append","--update","--catenate","--diff","--delete"];
-const OPFILES={"--create":"addons","--extract":"","--list":"","--append":"notes.txt","--update":"addons","--catenate":"extra.tar","--diff":"","--delete":"old.log"};
+const OPFILES={"--create":"html","--extract":"","--list":"","--append":"notes.txt","--update":"html","--catenate":"extra.tar","--diff":"","--delete":"old.log"};
 const COMP={"--gzip":["gzip",".tar.gz"],"--bzip2":["bzip2",".tar.bz2"],"--xz":["xz",".tar.xz"],"--zstd":["zstd",".tar.zst"],"--auto-compress":["the compressor its extension implies",".tar.gz"],"--use-compress-program":["a custom program",".tar.zst"],"--compress":["compress",".tar.Z"]};
 const A_INC=["--recursive","--links","--perms","--times","--group","--owner","-D"];
 const XONLY=["--keep-old-files","--skip-old-files","--overwrite","--touch","--to-stdout","--strip-components","--same-owner","--no-same-owner","--preserve-permissions"];
@@ -302,7 +302,7 @@ const ZCMD={"--gzip":"gzip","--bzip2":"bzip2","--xz":"xz","--zstd":"zstd","--com
 try{const v=JSON.parse(localStorage.getItem(K)||"null");if(v&&v.sel&&v.op&&v.val){for(const c of ["rsync","tar"])v.sel[c]=(v.sel[c]||[]).filter(id=>IDX[c][id]).slice(0,MAX);if(!(v.prog&&v.prog.rsync&&v.prog.tar))delete v.prog;if(!v.op.rsync||v.op.rsync.files===undefined){v.op.rsync=S.op.rsync;v.sel.rsync=S.sel.rsync}S={...S,...v,q:"",cat:"All"}}}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 /* Blank fields show examples as placeholders. While every path field for a command is blank, the command is built from those examples; once anything is typed, blank means blank. */
-const EX={rsync:{dir:"/opt/unetlab",dst:"/ws360Archive/112426/",files:"addons"},tarDir:"/ws360Archive/112426/"};
+const EX={rsync:{dir:"/var/www",dst:"/srv/backups/",files:"html"},tarDir:"/srv/backups/"};
 const tarEx=()=>OPFILES[S.sel.tar.find(id=>OPS.includes(id))]??"";
 const rP=()=>!(S.op.rsync.dir.trim()||S.op.rsync.dst.trim()||S.op.rsync.files.trim());
 const tP=()=>!(S.op.tar.files.trim()||S.op.tar.arc.trim());
@@ -531,7 +531,7 @@ function renderChips(){
 function renderFields(){
   const fs=selF(),h=[];
   const inp=(id,label,val,ph,c)=>`<div${c?` class="${c}"`:""}><label for="${id}">${label}</label><input id="${id}" value="${esc(val)}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></div>`;
-  if(S.cmd==="rsync"){h.push(inp("f-rdir","<b>Source-Directory</b>",S.op.rsync.dir,"/opt/unetlab","o1 c1"),inp("f-rem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.rsync.remote||"","user@backup-server","o2 c2"),inp("f-dst","<b>Destination-Directory</b>",S.op.rsync.dst,"/ws360Archive/112426/","o3 c1"),inp("f-rfiles","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.rsync.files,"addons","o4 c2"))}
+  if(S.cmd==="rsync"){h.push(inp("f-rdir","<b>Source-Directory</b>",S.op.rsync.dir,"/var/www","o1 c1"),inp("f-rem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.rsync.remote||"","user@backup-server","o2 c2"),inp("f-dst","<b>Destination-Directory</b>",S.op.rsync.dst,"/srv/backups/","o3 c1"),inp("f-rfiles","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.rsync.files,"html","o4 c2"))}
   else{if(has("--file")||piped()||tarHost())h.push(inp("f-arc","<b>Destination-Directory</b>",S.op.tar.arc,arcName(),"o3 c1"));h.push(inp("f-trem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.tar.remote||"","user@backup-server","o2 c2"),inp("f-files","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.tar.files,tarEx()||"blank = whole archive","o4 c2"))}
   const LBL={"tar--directory":"<b>Source-Directory</b>"};
   for(const f of fs)if(f.p&&!(S.cmd==="tar"&&f.id==="--file"))h.push(inp("v-"+f.id.replace(/\W/g,""),LBL[S.cmd+f.id]||`<b>${esc(f.s||f.l)}</b> ${esc(f.p)}`,S.val[S.cmd+f.id]??"",DEF[S.cmd+f.id]||f.p,S.cmd==="tar"&&f.id==="--directory"?"o1 c1":"o5").replace("<input ",`<input data-v="${esc(f.id)}" `));
