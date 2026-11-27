@@ -290,39 +290,47 @@ const COMP={"--gzip":["gzip",".tar.gz"],"--bzip2":["bzip2",".tar.bz2"],"--xz":["
 const A_INC=["--recursive","--links","--perms","--times","--group","--owner","-D"];
 const XONLY=["--keep-old-files","--skip-old-files","--overwrite","--touch","--to-stdout","--strip-components","--same-owner","--no-same-owner","--preserve-permissions"];
 const CONLY=["--remove-files","--sort=name","--mtime","--owner","--dereference","--one-file-system","--newer","--verify","--totals"];
-const MAX=10,K="flagbuilder-v2";
+const MAX=10,K="flagforge-v1";
 
 const F={},IDX={};
 for(const c in RAW){F[c]=RAW[c].map(([s,l,cat,d],i)=>{let base=l,p=null;const m=l&&l.match(/^(--[\w-]+)=(.+)$/);if(m&&/^[A-Z][A-Z:_]*$/.test(m[2])){base=m[1];p=m[2]}return{id:base||s,s,l:base,p,cat,d,i}});IDX[c]=Object.fromEntries(F[c].map(f=>[f.id,f]))}
 
-let S={cmd:"rsync",long:false,q:"",cat:"All",sel:{rsync:["--archive","--verbose","--human-readable"],tar:["--create","--gzip","--verbose","--file","--directory"]},val:{},op:{rsync:{dst:"/ws360Archive/112426/addons-backup",files:"addons",dir:"/opt/unetlab"},tar:{arc:"/ws360Archive/112426/addons-backup.tgz",files:"addons"}},prog:{rsync:{on:true,style:"overall"},tar:{on:false,style:"pv"}},mkpath:false};
+let S={cmd:"rsync",long:false,q:"",cat:"All",sel:{rsync:["--archive","--verbose","--human-readable"],tar:["--create","--gzip","--verbose","--file","--directory"]},val:{},op:{rsync:{dst:"",files:"",dir:""},tar:{arc:"",files:""}},prog:{rsync:{on:true,style:"overall"},tar:{on:false,style:"pv"}},mkpath:false};
 const PSTY={rsync:[["overall","Overall"],["file","Per file"]],tar:[["pv","Progress bar (pv)"],["dots","Built-in dots"]]};
 const PDESC={"@mk":"Creates any missing folders along the Destination-Directory path before copying (rsync 3.2.3+).","@p2":"One live line for the whole transfer: bytes copied, percent done, speed and time left.","@nir":"Scans every file before copying, so the overall percentage is accurate from the start (costs a little memory and startup time).","@pg":"A live progress line for each file as it copies.","@ckpt":"A checkpoint every 1000 records (about 10 MB).","@dot":"Prints a dot at each checkpoint, so a growing row of dots shows tar is working.","@pv":"pv draws the progress bar with percent, speed and ETA. The size, measured with du, lets it show a percentage.","@pvin":"pv reads the archive and shows a bar with percent, speed and ETA while it feeds tar.","@comp":"Compresses after pv, so the bar tracks the uncompressed data that du measured.","@out":"Writes the finished archive."};
 const ZCMD={"--gzip":"gzip","--bzip2":"bzip2","--xz":"xz","--zstd":"zstd","--compress":"compress"};
 try{const v=JSON.parse(localStorage.getItem(K)||"null");if(v&&v.sel&&v.op&&v.val){for(const c of ["rsync","tar"])v.sel[c]=(v.sel[c]||[]).filter(id=>IDX[c][id]).slice(0,MAX);if(!(v.prog&&v.prog.rsync&&v.prog.tar))delete v.prog;if(!v.op.rsync||v.op.rsync.files===undefined){v.op.rsync=S.op.rsync;v.sel.rsync=S.sel.rsync}S={...S,...v,q:"",cat:"All"}}}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+/* Blank fields show examples as placeholders. While every path field for a command is blank, the command is built from those examples; once anything is typed, blank means blank. */
+const EX={rsync:{dir:"/opt/unetlab",dst:"/ws360Archive/112426/",files:"addons"},tarDir:"/ws360Archive/112426/"};
+const tarEx=()=>OPFILES[S.sel.tar.find(id=>OPS.includes(id))]??"";
+const rP=()=>!(S.op.rsync.dir.trim()||S.op.rsync.dst.trim()||S.op.rsync.files.trim());
+const tP=()=>!(S.op.tar.files.trim()||S.op.tar.arc.trim());
+const X={rsync:{get dir(){return rP()?EX.rsync.dir:S.op.rsync.dir},get dst(){return rP()?EX.rsync.dst:S.op.rsync.dst},get files(){return rP()?EX.rsync.files:S.op.rsync.files},get remote(){return S.op.rsync.remote||""}},
+tar:{get arc(){return S.op.tar.arc||""},get files(){return tP()?tarEx():S.op.tar.files},get remote(){return S.op.tar.remote||""}}};
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const q=v=>v===""?"''":/^[A-Za-z0-9_@%+=:,.\/~-]+$/.test(v)?v:"'"+v.replace(/'/g,"'\\''")+"'";
 const selF=()=>S.sel[S.cmd].map(id=>IDX[S.cmd][id]).filter(Boolean).sort((a,b)=>a.i-b.i);
 const has=id=>S.sel[S.cmd].includes(id);
-const arcName=()=>{const a=S.op.tar.arc.trim();if(a)return a;const c=Object.keys(COMP).find(has);return "backup"+(c?COMP[c][1]:".tar")};
-const valOf=f=>S.cmd==="tar"&&f.id==="--file"?arcName():(S.val[S.cmd+f.id]??DEF[S.cmd+f.id]??"");
+const arcName=()=>{const a=X.tar.arc.trim();if(a)return a;const c=Object.keys(COMP).find(has),w=words(X.tar.files)[0]||"";let nm=w.replace(/\/+$/,"").split("/").pop();if(/^\.+$/.test(nm))nm="";nm=nm.replace(/[^\w.-]+/g,"_");return (tP()?EX.tarDir:"")+(nm?nm+"-":"")+"backup"+(c?COMP[c][1]:".tar")};
+const valOf=f=>S.cmd==="tar"&&f.id==="--file"?arcName():(S.val[S.cmd+f.id]||DEF[S.cmd+f.id]||"");
 const isRemote=v=>/^[^\/\s:]+:/.test(v);
 const words=v=>v.trim()?v.trim().split(/\s+/):[];
 
 function srcList(){
-  const d=S.op.rsync.dir.trim(),ws=words(S.op.rsync.files);
+  const d=X.rsync.dir.trim(),ws=words(X.rsync.files);
   const L=ws.length?ws.map(w=>!d||w.startsWith("/")||isRemote(w)?w:d.replace(/\/+$/,"")+"/"+w):d?[d]:[];
-  const dst=S.op.rsync.dst.trim();
+  const dst=X.rsync.dst.trim();
   if(L.length===1&&dst&&!dst.endsWith("/")&&!L[0].endsWith("/")&&!looksFile(L[0]))L[0]+="/";
   return L;
 }
-function remHost(){return(S.op.rsync.remote||"").trim().replace(/:+$/,"")}
-function dstFull(){const r=remHost(),d=S.op.rsync.dst.trim();return r&&!isRemote(d)?r+":"+d:d}
+function remHost(){return(X.rsync.remote||"").trim().replace(/:+$/,"")}
+function dstFull(){const r=remHost(),d=X.rsync.dst.trim();return r&&!isRemote(d)?r+":"+d:d}
 function looksFile(p){return /[^.\/]\.[A-Za-z0-9]{1,8}$/.test(p.replace(/\/+$/,"").split("/").pop())}
 function syncDst(){
+  if(!S.op.rsync.dst.trim())return;
   const ws=words(S.op.rsync.files),first=ws[0]||S.op.rsync.dir.trim();if(!first)return;
   let nm=first.replace(/\/+$/,"").split("/").pop();if(/^\.+$/.test(nm))nm="";nm=nm.replace(/[^\w.-]+/g,"_");
   const file=ws.length&&!first.endsWith("/")&&looksFile(first);
@@ -339,7 +347,7 @@ function tarMode(){
   if(p.style==="pv"){if(op.id==="--create")return"pvc";if(["--extract","--list","--diff"].includes(op.id))return"pvx"}
   return"dots";
 }
-function tarHost(){return(S.op.tar.remote||"").trim().replace(/:+$/,"")}
+function tarHost(){return(X.tar.remote||"").trim().replace(/:+$/,"")}
 function tarRemote(){const h=tarHost();if(!h)return"";const op=selF().find(f=>OPS.includes(f.id));return op&&["--create","--extract","--list","--diff"].includes(op.id)?h:""}
 const sshCat=w=>{const h=tarRemote(),a=arcName();return[{t:"ssh",k:"n",ids:["@ssh"]},{t:q(h),k:"o",ids:["@ssh"]},{t:q(w?"cat > "+q(a):"cat "+q(a)),k:"o",ids:["@ssh"]}]};
 const piped=()=>S.cmd==="tar"&&(["pvc","pvx"].includes(tarMode())||!!tarRemote());
@@ -350,7 +358,7 @@ function compCmd(id){
   return null;
 }
 function duExpr(){
-  const ws=words(S.op.tar.files).map(q);if(!ws.length)return"";
+  const ws=words(X.tar.files).map(q);if(!ws.length)return"";
   const dir=has("--directory")?valOf(IDX.tar["--directory"]):"";
   const du=ws.length>1?"du -sbc "+ws.join(" ")+" | tail -1 | cut -f1":"du -sb "+ws[0]+" | cut -f1";
   return"$("+(dir?"cd "+q(dir)+" && ":"")+du+")";
@@ -381,7 +389,7 @@ function tokens(){
   const fs=m==="pvc"?selF().filter(f=>!COMP[f.id]):selF();
   const core=[{t:"tar",k:"n",ids:[]}];flagToks(fs,has("--file")||pipe,pipe?"-":q(arcName()),core);
   if(m==="dots"){if(!has("--checkpoint"))core.push({t:"--checkpoint=1000",k:"f",ids:["@ckpt"]});core.push({t:"--checkpoint-action=dot",k:"f",ids:["@dot"]})}
-  for(const w of words(S.op.tar.files))core.push({t:q(w),k:"o",ids:["@files"]});
+  for(const w of words(X.tar.files))core.push({t:q(w),k:"o",ids:["@files"]});
   if(rem&&!has("--create"))return m==="pvx"?[...sshCat(false),P,{t:"pv",k:"n",ids:["@pvin"]},P,...core]:[...sshCat(false),P,...core];
   if(m==="pvx")return[{t:"pv",k:"n",ids:["@pvin"]},{t:q(arcName()),k:"o",ids:["@pvin"]},P,...core];
   if(rem&&m!=="pvc")return[...core,P,...sshCat(true)];
@@ -398,7 +406,7 @@ function rsyncInfo(){
   const ss=srcList(),N=[],src=ss[0]||"SRC",dst=dstFull()||"DEST",remote=ss.some(isRemote)||isRemote(dst);
   const rec=has("--archive")||has("--recursive"),del=["--delete","--delete-after","--delete-excluded"].some(has);
   const what=ss.length?ss.join(", "):"SRC",nm=src.replace(/\/+$/,"").split("/").pop();
-  const named=ss.length===1&&!S.op.rsync.dst.trim().endsWith("/");
+  const named=ss.length===1&&!X.rsync.dst.trim().endsWith("/");
   let s=named?(remote?"Syncs ":"Copies ")+src.replace(/\/+$/,"")+" to "+dst+(src.endsWith("/")?" (its contents go straight into "+dst.split("/").pop()+")":"")+(remote?" over SSH":""):(remote?"Syncs ":"Copies ")+(ss.length===1&&src.endsWith("/")?"the contents of "+what:what)+" into "+dst+(!src.endsWith("/")&&ss.length===1&&nm?" (as "+dst.replace(/\/+$/,"")+"/"+nm+")":"")+(remote?" over SSH":"");
   if(!rec&&!has("--files-from"))s+=", top-level files only";
   if(has("--archive"))s+=", keeping permissions, times, owners and symlinks";
@@ -425,7 +433,7 @@ function rsyncInfo(){
   if(remHost()&&!has("--rsh"))N.push(["tip","rsync connects to "+remHost()+" over SSH on port 22. For another port or key, add -e (e.g. ssh -p 2222)."]);
   if((has("--rsh")||has("--timeout"))&&!remote)N.push(["tip","This only matters when SRC or DEST is remote (host:path)."]);
   if(!rec&&!has("--files-from")&&!del)N.push(["tip","Add -a (or -r) to copy folders recursively."]);
-  {const D=S.op.rsync.dst.trim().replace(/\/+$/,""),i=D.lastIndexOf("/"),par=i>0?D.slice(0,i):"";if(S.mkpath)N.push(["tip","--mkpath needs rsync 3.2.3 or newer"+(remHost()?" on both machines":"")+". Check with rsync --version."]);else if(par&&remHost()&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist on "+remHost()+", run ssh "+q(remHost())+" mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."]);else if(par&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist, run mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."])}
+  {const D=X.rsync.dst.trim().replace(/\/+$/,""),i=D.lastIndexOf("/"),par=i>0?D.slice(0,i):"";if(S.mkpath)N.push(["tip","--mkpath needs rsync 3.2.3 or newer"+(remHost()?" on both machines":"")+". Check with rsync --version."]);else if(par&&remHost()&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist on "+remHost()+", run ssh "+q(remHost())+" mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."]);else if(par&&!isRemote(D))N.push(["tip","rsync only creates the last folder of Destination-Directory. If "+par+" might not exist, run mkdir -p "+q(par)+" first, or turn on Create missing folders (--mkpath)."])}
   const pr=S.prog.rsync;
   if(pr.on){
     s+=pr.style==="overall"?" A live line shows overall percent done, speed and time left.":" Each file shows a live progress line as it copies.";
@@ -441,7 +449,7 @@ function rsyncInfo(){
 function tarInfo(){
   const m=tarMode(),rem=tarRemote(),N=[],fs=selF(),op=fs.find(f=>OPS.includes(f.id)),file=has("--file")||m==="pvc"||m==="pvx"||!!rem,arc=arcName();
   const comps=Object.keys(COMP).filter(has),comp=comps[0],cn=comp?(comp==="--use-compress-program"?valOf(IDX.tar[comp]).split(" ")[0]:COMP[comp][0]):"";
-  const files=words(S.op.tar.files).join(" "),dir=has("--directory")?valOf(IDX.tar["--directory"]):"";
+  const files=words(X.tar.files).join(" "),dir=has("--directory")?valOf(IDX.tar["--directory"]):"";
   const into=file?arc:"standard input";let s;
   if(!op){s="This isn't a complete command yet: tar needs one operation.";N.push(["warn","Pick exactly one operation: -c, -x, -t, -r, -u, -A, -d or --delete."])}
   else switch(op.id){
@@ -476,7 +484,7 @@ function tarInfo(){
     if(has("--verbose"))N.push(["tip","-v prints file names on the same screen as the bar. Drop it for a clean bar."]);
   }
   if(m==="pvc"){
-    if(!words(S.op.tar.files).length)N.push(["tip","With no files named, du can't measure a total, so pv shows speed and bytes but no percentage."]);
+    if(!words(X.tar.files).length)N.push(["tip","With no files named, du can't measure a total, so pv shows speed and bytes but no percentage."]);
     else if(["--exclude","--exclude-from","--exclude-vcs"].some(has))N.push(["tip","du still counts excluded files, so the bar may finish short of 100%."]);
     if(has("--verify"))N.push(["warn","-W can't verify an archive written to a pipe."]);
     if(comp&&!compCmd(comp))N.push(["warn","Couldn't tell which compressor to use from the archive name, so the output isn't compressed."]);
@@ -497,9 +505,9 @@ function tarInfo(){
 function breakdown(T){
   const rows=[];
   for(const t of T)for(const id of t.ids){
-    if(id==="@src"){if(rows.some(r=>r[0]===id))continue;const ss=srcList(),v=ss.join(" ")||"SRC",d=S.op.rsync.dir.trim();rows.push([id,v,"Source"+(d&&words(S.op.rsync.files).length?": the target inside "+d+". ":". ")+(v.endsWith("/")?(ss.length===1&&!S.op.rsync.dst.trim().endsWith("/")?"The trailing slash puts its contents straight into Destination-Directory, so the copy is named "+S.op.rsync.dst.trim().split("/").pop()+".":"The trailing slash copies its contents."):ss.length===1&&looksFile(v)?"A single file, copied under the Destination-Directory name.":"No trailing slash, so the folder itself is copied.")]);continue}
-    if(id==="@dst"){const v=(S.cmd==="rsync"?dstFull():S.op.rsync.dst.trim())||"DEST";rows.push([id,v,(S.cmd==="rsync"&&!v.endsWith("/")?"Destination: the name and location of the backup copy":"Destination")+(isRemote(v)?", on a remote host (user@host:path), reached over SSH.":", on this machine.")]);continue}
-    if(id==="@files"){if(!rows.some(r=>r[0]==="@files"))rows.push([id,words(S.op.tar.files).join(" "),has("--extract")||has("--list")?"Only these members are extracted or listed.":"Files and folders the operation works on."]);continue}
+    if(id==="@src"){if(rows.some(r=>r[0]===id))continue;const ss=srcList(),v=ss.join(" ")||"SRC",d=X.rsync.dir.trim();rows.push([id,v,"Source"+(d&&words(X.rsync.files).length?": the target inside "+d+". ":". ")+(v.endsWith("/")?(ss.length===1&&!X.rsync.dst.trim().endsWith("/")?"The trailing slash puts its contents straight into Destination-Directory, so the copy is named "+X.rsync.dst.trim().split("/").pop()+".":"The trailing slash copies its contents."):ss.length===1&&looksFile(v)?"A single file, copied under the Destination-Directory name.":"No trailing slash, so the folder itself is copied.")]);continue}
+    if(id==="@dst"){const v=(S.cmd==="rsync"?dstFull():X.rsync.dst.trim())||"DEST";rows.push([id,v,(S.cmd==="rsync"&&!v.endsWith("/")?"Destination: the name and location of the backup copy":"Destination")+(isRemote(v)?", on a remote host (user@host:path), reached over SSH.":", on this machine.")]);continue}
+    if(id==="@files"){if(!rows.some(r=>r[0]==="@files"))rows.push([id,words(X.tar.files).join(" "),has("--extract")||has("--list")?"Only these members are extracted or listed.":"Files and folders the operation works on."]);continue}
     if(rows.some(r=>r[0]===id))continue;
     if(PDESC[id]){rows.push([id,T.filter(x=>x.ids.includes(id)).map(x=>x.t).join(" "),PDESC[id]]);continue}
     if(PDESC[id]===undefined&&id==="@ssh"){rows.push([id,T.filter(x=>x.ids.includes(id)).map(x=>x.t).join(" "),has("--create")?"Sends the archive over SSH to "+tarRemote()+" and saves it as Destination-Directory there.":"Streams the archive from "+tarRemote()+" over SSH into tar."]);continue}
@@ -524,9 +532,9 @@ function renderFields(){
   const fs=selF(),h=[];
   const inp=(id,label,val,ph,c)=>`<div${c?` class="${c}"`:""}><label for="${id}">${label}</label><input id="${id}" value="${esc(val)}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></div>`;
   if(S.cmd==="rsync"){h.push(inp("f-rdir","<b>Source-Directory</b>",S.op.rsync.dir,"/opt/unetlab","o1 c1"),inp("f-rem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.rsync.remote||"","user@backup-server","o2 c2"),inp("f-dst","<b>Destination-Directory</b>",S.op.rsync.dst,"/ws360Archive/112426/","o3 c1"),inp("f-rfiles","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.rsync.files,"addons","o4 c2"))}
-  else{if(has("--file")||piped()||tarHost())h.push(inp("f-arc","<b>Destination-Directory</b>",S.op.tar.arc,arcName(),"o3 c1"));h.push(inp("f-trem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.tar.remote||"","user@backup-server","o2 c2"),inp("f-files","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.tar.files,"addons","o4 c2"))}
+  else{if(has("--file")||piped()||tarHost())h.push(inp("f-arc","<b>Destination-Directory</b>",S.op.tar.arc,arcName(),"o3 c1"));h.push(inp("f-trem","<b>REMOTE</b><small>(user@host, blank = this machine)</small>",S.op.tar.remote||"","user@backup-server","o2 c2"),inp("f-files","<b>Target File or Folder</b> <small>(space-separated)</small>",S.op.tar.files,tarEx()||"blank = whole archive","o4 c2"))}
   const LBL={"tar--directory":"<b>Source-Directory</b>"};
-  for(const f of fs)if(f.p&&!(S.cmd==="tar"&&f.id==="--file"))h.push(inp("v-"+f.id.replace(/\W/g,""),LBL[S.cmd+f.id]||`<b>${esc(f.s||f.l)}</b> ${esc(f.p)}`,valOf(f),DEF[S.cmd+f.id]||f.p,S.cmd==="tar"&&f.id==="--directory"?"o1 c1":"o5").replace("<input ",`<input data-v="${esc(f.id)}" `));
+  for(const f of fs)if(f.p&&!(S.cmd==="tar"&&f.id==="--file"))h.push(inp("v-"+f.id.replace(/\W/g,""),LBL[S.cmd+f.id]||`<b>${esc(f.s||f.l)}</b> ${esc(f.p)}`,S.val[S.cmd+f.id]??"",DEF[S.cmd+f.id]||f.p,S.cmd==="tar"&&f.id==="--directory"?"o1 c1":"o5").replace("<input ",`<input data-v="${esc(f.id)}" `));
   $("fields").innerHTML=h.join("");
 }
 function renderOut(){
@@ -553,7 +561,7 @@ const hum=b=>b>=1e9?(b/1e9).toFixed(2)+"G":b>=1e6?(b/1e6).toFixed(2)+"M":(b/1e3)
 function previewMode(){
   if(S.cmd==="rsync")return S.prog.rsync.on?S.prog.rsync.style:"off";
   if(!S.prog.tar.on)return"off";const m=tarMode();
-  return m==="none"?"noop":m==="dots"?"dots":(m==="pvc"&&!words(S.op.tar.files).length)?"pvnos":"pv";
+  return m==="none"?"noop":m==="dots"?"dots":(m==="pvc"&&!words(X.tar.files).length)?"pvnos":"pv";
 }
 function drawPreview(){
   const p=pp,m=previewMode(),el=$("pview"),h=has("--human-readable");let t="",cap="";
@@ -587,7 +595,7 @@ const still=matchMedia("(prefers-reduced-motion: reduce)").matches;
 if(still)pp=.58;else setInterval(()=>{if(pp>=1){if(++hold>12){pp=0;hold=0}}else pp=Math.min(1,pp+.012);drawPreview()},150);
 function unpackInfo(){
   const comp=Object.keys(COMP).find(has),arc=arcName(),orig=has("--directory")?valOf(IDX.tar["--directory"]):"";
-  const dir=(S.unpackDir??orig).trim(),L=S.long,pr=S.prog.tar,pv=pr.on&&pr.style==="pv",dots=pr.on&&pr.style==="dots";
+  const dir=(S.unpackDir||orig).trim(),L=S.long,pr=S.prog.tar,pv=pr.on&&pr.style==="pv",dots=pr.on&&pr.style==="dots";
   const zs={"--gzip":"z","--bzip2":"j","--xz":"J","--compress":"Z"}[comp]||"";
   const zl=comp==="--zstd"?"--zstd":comp==="--use-compress-program"?(L?"--use-compress-program=":"-I ")+q(valOf(IDX.tar[comp])):"";
   const keep=["--acls","--xattrs","--selinux","--numeric-owner"].filter(has);
@@ -606,7 +614,7 @@ function unpackInfo(){
     if(uh)T.push("ssh",q(uh),q(tarX("-").join(" ")));else T.push(...tarX(piped?"-":q(arc)));
   }
   const la=rh?"-":q(arc),lst=(rh?rc+" | ":"")+(L?"tar --list"+(zs?" "+{"z":"--gzip","j":"--bzip2","J":"--xz","Z":"--compress"}[zs]:"")+(zl?" "+zl:"")+" --file="+la:"tar -t"+zs+"f "+la+(zl?" "+zl:""));
-  const items=words(S.op.tar.files),where=dir||(uh?"the home folder on "+uh:"the current directory"),N=[];
+  const items=words(X.tar.files),where=dir||(uh?"the home folder on "+uh:"the current directory"),N=[];
   let s="Unpacks "+arc+(rh&&!same?" from "+rh+" (streamed over SSH)":"")+" into "+where+(uh&&dir?" on "+uh:"")+(items.length?", recreating "+items.join(", ")+" inside it":"")+(dir&&dir===orig&&!uh?" (back where it came from)":"")+".";
   if(same)s+=" Everything runs on "+uh+", so the archive doesn't cross the network.";
   else if(uh&&!rh)s+=" The archive is streamed from this machine to "+uh+" over SSH.";
@@ -630,7 +638,7 @@ function rsyncRestore(){
   const pr=S.prog.rsync;
   if(pr.on&&pr.style==="overall"){if(!has("--info=progress2"))fl.push("--info=progress2");fl.push("--no-inc-recursive")}
   if(pr.on&&pr.style==="file"&&!has("--progress")&&!has("-P"))fl.push("--progress");
-  const draw=S.op.rsync.dst.trim();let bh=remHost(),bp=draw;
+  const draw=X.rsync.dst.trim();let bh=remHost(),bp=draw;
   if(!bh&&isRemote(draw)){const i=draw.indexOf(":");bh=draw.slice(0,i);bp=draw.slice(i+1)}
   const base=bp.replace(/\/+$/,"")||bp;let rs,orig;
   if(ss.length===1&&draw&&!draw.endsWith("/")){const s0=ss[0];if(s0.endsWith("/")){rs=[base+"/"];orig=s0.replace(/\/+$/,"")}else{rs=[bp];orig=s0}}
@@ -655,16 +663,16 @@ function rsyncRestore(){
 const curUnpack=()=>S.cmd==="rsync"?rsyncRestore():unpackInfo();
 function renderUnpack(){
   const r=S.cmd==="rsync",box=$("unp");box.hidden=false;
-  const on=r?srcList().length>0:has("--create");
-  $("uoff").textContent=r?"Fill in Source-Directory or Target File or Folder to get the matching restore command.":"Pick -c (create) to get the matching command for unpacking the archive.";
+  const on=r?srcList().length>0&&!!X.rsync.dst.trim():has("--create");
+  $("uoff").textContent=r?"Fill in Destination-Directory and Source-Directory or Target File or Folder to get the matching restore command.":"Pick -c (create) to get the matching command for unpacking the archive.";
   $("uoff").hidden=on;$("uon").hidden=!on;if(!on)return;
   const u=curUnpack(),orig=r?u.orig:has("--directory")?valOf(IDX.tar["--directory"]):"";
   $("ucmd").innerHTML=`<span class="pr">$ </span>${esc(u.cmd)}`;
-  const ud=r?u.dest:(S.unpackDir??orig).trim(),rv=r?S.rUnpackRemote:S.unpackRemote;
+  const ud=r?u.dest:(S.unpackDir||orig).trim(),rv=r?S.rUnpackRemote:S.unpackRemote;
   const uh=(rv||"").trim();const ue=$("f-urem");if(ue!==document.activeElement)ue.value=rv||"";
   $("ucap").textContent=uh?"Unpacks on "+uh.replace(/:+$/,"")+".":!ud?"Unpacks where you run it.":ud===orig?(r?"Restores to the original location.":"Restores to the original -C folder."):(r?"Restores to a different folder.":"Unpacks to a different folder.");
-  $("uhint").textContent=r?"(blank = original location)":"(blank = current directory)";
-  const el=$("f-unp");if(el){if(el!==document.activeElement)el.value=(r?S.rUnpackDir:S.unpackDir)??orig;el.placeholder=orig||"current directory"}
+  $("uhint").textContent=r||orig?"(blank = original location)":"(blank = current directory)";
+  const el=$("f-unp");if(el){if(el!==document.activeElement)el.value=(r?S.rUnpackDir:S.unpackDir)??"";el.placeholder=orig||"current directory"}
   $("usum").textContent=u.s;
   $("unotes").innerHTML=u.N.map(([k,t])=>`<p class="note ${k}"><b>${k==="warn"?"Watch out":"Tip"}</b><span>${esc(t)}</span></p>`).join("");
   $("lcmd").textContent=u.lst;
@@ -672,7 +680,7 @@ function renderUnpack(){
 const all=()=>{renderTop();renderChips();renderProg();renderFields();renderOut();renderList();save()};
 
 function syncArc(){
-  if(!has("--create"))return;
+  if(!has("--create")||!S.op.tar.arc.trim())return;
   const w=words(S.op.tar.files)[0];if(!w)return;
   let nm=w.replace(/\/+$/,"").split("/").pop()||"root";if(/^\.+$/.test(nm))nm="";
   nm=nm.replace(/[^\w.-]+/g,"_");
@@ -687,7 +695,7 @@ function toggle(id){
   const c=S.cmd,sel=S.sel[c];
   if(sel.includes(id)){S.sel[c]=sel.filter(x=>x!==id);all();return}
   let next=[...sel];
-  if(c==="tar"&&OPS.includes(id)){const old=next.filter(x=>OPS.includes(x));next=next.filter(x=>!OPS.includes(x));if(old.length)say("tar takes one operation, so "+old.map(x=>IDX.tar[x].s||x).join(", ")+" was swapped out.");S.op.tar.files=OPFILES[id]}
+  if(c==="tar"&&OPS.includes(id)){const old=next.filter(x=>OPS.includes(x));next=next.filter(x=>!OPS.includes(x));if(old.length)say("tar takes one operation, so "+old.map(x=>IDX.tar[x].s||x).join(", ")+" was swapped out.");S.op.tar.files=""}
   if(next.length>=MAX){say("The limit is "+MAX+" flags. Remove one first.");const el=$("count");el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");return}
   next.push(id);S.sel[c]=next;if(c==="tar")syncArc();all();
 }
@@ -710,11 +718,12 @@ document.addEventListener("input",e=>{
   const t=e.target;
   if(t.id==="q"){S.q=t.value;renderList();return}
   if(t.id==="f-urem"){if(S.cmd==="rsync")S.rUnpackRemote=t.value;else S.unpackRemote=t.value;renderUnpack();save();return}
-  if(t.id==="f-unp"&&S.cmd==="rsync"){const o=rsyncRestore()?.orig;S.rUnpackDir=t.value===o?null:t.value;renderUnpack();save();return}
-  if(t.id==="f-unp"){const o=has("--directory")?valOf(IDX.tar["--directory"]):"";S.unpackDir=t.value===o?null:t.value;renderUnpack();save();return}
+  if(t.id==="f-unp"&&S.cmd==="rsync"){const o=rsyncRestore()?.orig;S.rUnpackDir=!t.value.trim()||t.value===o?null:t.value;renderUnpack();save();return}
+  if(t.id==="f-unp"){const o=has("--directory")?valOf(IDX.tar["--directory"]):"";S.unpackDir=!t.value.trim()||t.value===o?null:t.value;renderUnpack();save();return}
   if(t.id==="f-rfiles"){S.op.rsync.files=t.value;syncDst()}else if(t.id==="f-rdir"){S.op.rsync.dir=t.value;syncDst()}else if(t.id==="f-dst")S.op.rsync.dst=t.value;else if(t.id==="f-rem")S.op.rsync.remote=t.value;
   else if(t.id==="f-arc")S.op.tar.arc=t.value;else if(t.id==="f-trem")S.op.tar.remote=t.value;else if(t.id==="f-files"){S.op.tar.files=t.value;syncArc()}
   else if(t.dataset.v)S.val[S.cmd+t.dataset.v]=t.value;else return;
+  {const ea=$("f-arc");if(ea)ea.placeholder=arcName()}
   renderOut();drawPreview();save();
 });
 $("bd").addEventListener("mouseover",e=>{const r=e.target.closest("[data-id]");document.querySelectorAll(".tk").forEach(k=>k.classList.toggle("hl",!!r&&k.dataset.ids.split(" ").includes(r.dataset.id)))});
