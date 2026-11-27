@@ -295,11 +295,11 @@ const MAX=10,K="flagforge-v1";
 const F={},IDX={};
 for(const c in RAW){F[c]=RAW[c].map(([s,l,cat,d],i)=>{let base=l,p=null;const m=l&&l.match(/^(--[\w-]+)=(.+)$/);if(m&&/^[A-Z][A-Z:_]*$/.test(m[2])){base=m[1];p=m[2]}return{id:base||s,s,l:base,p,cat,d,i}});IDX[c]=Object.fromEntries(F[c].map(f=>[f.id,f]))}
 
-let S={cmd:"rsync",long:false,q:"",cat:"All",sel:{rsync:["--archive","--verbose","--human-readable"],tar:["--create","--gzip","--verbose","--file","--directory"]},val:{},op:{rsync:{dst:"",files:"",dir:""},tar:{arc:"",files:""}},prog:{rsync:{on:true,style:"overall"},tar:{on:false,style:"pv"}},mkpath:false};
+let S={cmd:"rsync",long:false,q:"",cat:[],sel:{rsync:["--archive","--verbose","--human-readable"],tar:["--create","--gzip","--verbose","--file","--directory"]},val:{},op:{rsync:{dst:"",files:"",dir:""},tar:{arc:"",files:""}},prog:{rsync:{on:true,style:"overall"},tar:{on:false,style:"pv"}},mkpath:false};
 const PSTY={rsync:[["overall","Overall"],["file","Per file"]],tar:[["pv","Progress bar (pv)"],["dots","Built-in dots"]]};
 const PDESC={"@mk":"Creates any missing folders along the Destination-Directory path before copying (rsync 3.2.3+).","@p2":"One live line for the whole transfer: bytes copied, percent done, speed and time left.","@nir":"Scans every file before copying, so the overall percentage is accurate from the start (costs a little memory and startup time).","@pg":"A live progress line for each file as it copies.","@ckpt":"A checkpoint every 1000 records (about 10 MB).","@dot":"Prints a dot at each checkpoint, so a growing row of dots shows tar is working.","@pv":"pv draws the progress bar with percent, speed and ETA. The size, measured with du, lets it show a percentage.","@pvin":"pv reads the archive and shows a bar with percent, speed and ETA while it feeds tar.","@comp":"Compresses after pv, so the bar tracks the uncompressed data that du measured.","@out":"Writes the finished archive."};
 const ZCMD={"--gzip":"gzip","--bzip2":"bzip2","--xz":"xz","--zstd":"zstd","--compress":"compress"};
-try{const v=JSON.parse(localStorage.getItem(K)||"null");if(v&&v.sel&&v.op&&v.val){for(const c of ["rsync","tar"])v.sel[c]=(v.sel[c]||[]).filter(id=>IDX[c][id]).slice(0,MAX);if(!(v.prog&&v.prog.rsync&&v.prog.tar))delete v.prog;if(!v.op.rsync||v.op.rsync.files===undefined){v.op.rsync=S.op.rsync;v.sel.rsync=S.sel.rsync}S={...S,...v,q:"",cat:"All"}}}catch(e){}
+try{const v=JSON.parse(localStorage.getItem(K)||"null");if(v&&v.sel&&v.op&&v.val){for(const c of ["rsync","tar"])v.sel[c]=(v.sel[c]||[]).filter(id=>IDX[c][id]).slice(0,MAX);if(!(v.prog&&v.prog.rsync&&v.prog.tar))delete v.prog;if(!v.op.rsync||v.op.rsync.files===undefined){v.op.rsync=S.op.rsync;v.sel.rsync=S.sel.rsync}S={...S,...v,q:"",cat:[]}}}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 /* Blank fields show examples as placeholders. While every path field for a command is blank, the command is built from those examples; once anything is typed, blank means blank. */
 const EX={rsync:{dir:"/var/www",dst:"/srv/backups/",files:"html"},tarDir:"/srv/backups/"};
@@ -555,9 +555,9 @@ function renderOut(){
 }
 function renderList(){
   const c=S.cmd,cats=["All",...new Set(F[c].map(f=>f.cat))],full=S.sel[c].length>=MAX,qq=S.q.trim().toLowerCase();
-  if(!cats.includes(S.cat))S.cat="All";
-  $("cats").innerHTML=cats.map(k=>`<button data-cat="${esc(k)}" aria-pressed="${S.cat===k}">${esc(k)}</button>`).join("");
-  const items=F[c].filter(f=>(S.cat==="All"||f.cat===S.cat)&&(!qq||[f.s,f.l,f.p,f.d,f.cat].join(" ").toLowerCase().includes(qq)));
+  S.cat=(Array.isArray(S.cat)?S.cat:[]).filter(k=>cats.includes(k));
+  $("cats").innerHTML=cats.map(k=>`<button data-cat="${esc(k)}" aria-pressed="${k==="All"?!S.cat.length:S.cat.includes(k)}">${esc(k)}</button>`).join("");
+  const items=F[c].filter(f=>(!S.cat.length||S.cat.includes(f.cat))&&(!qq||[f.s,f.l,f.p,f.d,f.cat].join(" ").toLowerCase().includes(qq)));
   $("rc").textContent=items.length+" of "+F[c].length;
   $("list").innerHTML=items.length?items.map(f=>{const on=has(f.id),dis=full&&!on;return`<button class="row" data-id="${esc(f.id)}" aria-pressed="${on}" aria-disabled="${dis}"><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.5 2.5L10 3"/></svg></span><span><span class="fl">${esc(f.s||f.l)}${f.s&&f.l?`<em>${esc(f.l)}${f.p?"="+esc(f.p):""}</em>`:f.p?`<em>=${esc(f.p)}</em>`:""}</span><span class="cat">${esc(f.cat)}</span></span><span class="d">${esc(f.d)}</span></button>`}).join(""):`<p class="none">No flags match “${esc(S.q)}”.</p>`;
 }
@@ -714,7 +714,7 @@ document.addEventListener("click",e=>{
   else if(b.id==="mk-on"){S.mkpath=!S.mkpath;all()}
   else if(b.id==="p-on"){S.prog[S.cmd].on=!S.prog[S.cmd].on;pp=still?.58:0;all()}
   else if(b.dataset.ps){S.prog[S.cmd].style=b.dataset.ps;pp=still?.58:0;all()}
-  else if(b.dataset.cat){S.cat=b.dataset.cat;renderList()}
+  else if(b.dataset.cat){const k=b.dataset.cat;S.cat=k==="All"?[]:S.cat.includes(k)?S.cat.filter(x=>x!==k):[...S.cat,k];renderList()}
   else if(b.classList.contains("row")){if(b.getAttribute("aria-disabled")==="true"){toggle(b.dataset.id);return}toggle(b.dataset.id)}
   else if(b.id==="copy"||b.id==="copy2")copy(b,cmdText(),$("cmd"));
   else if(b.id==="ucopy")copy(b,curUnpack().cmd,$("ucmd"));
