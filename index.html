@@ -94,6 +94,9 @@ h2{font:700 20px/1.2 "Inter Tight",Inter,sans-serif;margin:0 0 10px;letter-spaci
 .bd p{color:#e2efe9;font-size:15px}
 .bd>div:hover code,.bd>div:hover p{background:rgba(255,255,255,.05)}
 @media(max-width:600px){.bd{grid-template-columns:minmax(0,1fr)}.bd code{border-bottom:0;padding-bottom:0}}
+.phead{display:flow-root;position:sticky;top:var(--hh,0px);z-index:5;background:var(--bg);padding-top:12px;margin-top:-12px}
+.phead.stuck{box-shadow:0 8px 8px -8px rgba(0,0,0,.25)}
+@media(max-width:600px){.phead .cats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:calc(-1 * max(3vw,16px));padding-right:max(3vw,16px)}.phead .cats::-webkit-scrollbar{display:none}.phead .cats button{flex:none}}
 .pick h2{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .pick h2 small{font:500 14px Inter,sans-serif;color:var(--mut)}
 #q{width:100%;min-height:46px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:16px Inter,sans-serif}
@@ -174,9 +177,11 @@ h2{font:700 20px/1.2 "Inter Tight",Inter,sans-serif;margin:0 0 10px;letter-spaci
     </div>
   </section>
   <section class="pick" aria-label="Flags">
-    <h2>Flags <small id="rc"></small></h2>
-    <input id="q" type="search" placeholder="Search flags or descriptions" aria-label="Search flags">
-    <div class="cats" id="cats"></div>
+    <div class="phead" id="phead">
+      <h2>Flags <small id="rc"></small></h2>
+      <input id="q" type="search" placeholder="Search flags or descriptions" aria-label="Search flags">
+      <div class="cats" id="cats"></div>
+    </div>
     <div class="list" id="list"></div>
   </section>
 </main>
@@ -724,8 +729,8 @@ document.addEventListener("click",e=>{
   else if(b.id==="mk-on"){S.mkpath=!S.mkpath;all()}
   else if(b.id==="p-on"){S.prog[S.cmd].on=!S.prog[S.cmd].on;pp=still?.58:0;all()}
   else if(b.dataset.ps){S.prog[S.cmd].style=b.dataset.ps;pp=still?.58:0;all()}
-  else if(b.id==="clr"){S.cat=[];S.q="";$("q").value="";renderList();$("q").focus()}
-  else if(b.dataset.cat){const k=b.dataset.cat;S.cat=k==="All"?[]:S.cat.includes(k)?S.cat.filter(x=>x!==k):[...S.cat,k];renderList()}
+  else if(b.id==="clr"){S.cat=[];S.q="";$("q").value="";renderList();keepTop();$("q").focus({preventScroll:true})}
+  else if(b.dataset.cat){const k=b.dataset.cat;S.cat=k==="All"?[]:S.cat.includes(k)?S.cat.filter(x=>x!==k):[...S.cat,k];renderList();keepTop()}
   else if(b.classList.contains("row")){if(b.getAttribute("aria-disabled")==="true"){toggle(b.dataset.id);return}toggle(b.dataset.id)}
   else if(b.id==="copy"||b.id==="copy2")copy(b,cmdText(),$("cmd"));
   else if(b.id==="ucopy")copy(b,curUnpack().cmd,$("ucmd"));
@@ -733,7 +738,7 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("input",e=>{
   const t=e.target;
-  if(t.id==="q"){S.q=t.value;renderList();return}
+  if(t.id==="q"){S.q=t.value;renderList();keepTop();return}
   if(t.id==="f-urem"){if(S.cmd==="rsync")S.rUnpackRemote=t.value;else S.unpackRemote=t.value;renderUnpack();save();return}
   if(t.id==="f-unp"&&S.cmd==="rsync"){const o=rsyncRestore()?.orig;S.rUnpackDir=!t.value.trim()||t.value===o?null:t.value;renderUnpack();save();return}
   if(t.id==="f-unp"){const o=has("--directory")?valOf(IDX.tar["--directory"]):"";S.unpackDir=!t.value.trim()||t.value===o?null:t.value;renderUnpack();save();return}
@@ -756,9 +761,14 @@ async function copy(b,txt,node){
 const top_=document.querySelector(".top");let io,ioH=-1;
 function watchCmd(h){if(h===ioH)return;ioH=h;if(io)io.disconnect();io=new IntersectionObserver(([en])=>$("mini").classList.toggle("show",!en.isIntersecting),{rootMargin:`-${h}px 0px 0px 0px`});io.observe($("cmdbox"))}
 function setHH(){const h=Math.round(top_.getBoundingClientRect().height);document.documentElement.style.setProperty("--hh",h+"px");watchCmd(h)}
-setHH();if(window.ResizeObserver)new ResizeObserver(setHH).observe(top_);
+setHH();if(window.ResizeObserver)new ResizeObserver(setHH).observe(top_,{box:"border-box"});top_.addEventListener("transitionend",setHH);
 const stick=()=>{const y=window.scrollY,on=top_.classList.contains("stuck");if(!on&&y>120)top_.classList.add("stuck");else if(on&&y<20)top_.classList.remove("stuck")};
-addEventListener("scroll",stick,{passive:true});stick();
+/* Frozen Flags header: search and categories stay under the banner while the list scrolls. */
+const ph=$("phead"),hhNow=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hh"))||0;
+const phStuck=()=>ph.getBoundingClientRect().top<=hhNow()+1&&ph.parentElement.getBoundingClientRect().top<hhNow();
+/* After a filter change, bring the top of the list back into view so a shorter list doesn't leave a blank page. */
+function keepTop(){if(phStuck())scrollTo({top:ph.parentElement.getBoundingClientRect().top+scrollY-hhNow()})}
+addEventListener("scroll",()=>{stick();ph.classList.toggle("stuck",phStuck())},{passive:true});stick();
 syncDst();
 all();
 }
