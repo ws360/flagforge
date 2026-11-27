@@ -22,7 +22,14 @@
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
 button{font:inherit}
-.top{background:var(--g);color:#fff;padding:26px max(3vw,16px) 22px}
+.top{background:var(--g);color:#fff;padding:26px max(3vw,16px) 22px;position:sticky;top:0;z-index:10;transition:padding .2s}
+.top.stuck{padding-top:12px;padding-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.top.stuck h1{font-size:26px}
+.top.stuck .tag,.top.stuck .in>div:first-child>p{display:none}
+.top.stuck .in{align-items:center;gap:10px 24px}
+.top.stuck #msg:empty{display:none}
+@media(max-width:600px){.top.stuck .in{gap:8px 16px}.top.stuck h1{font-size:22px}.top.stuck .ctl{gap:8px 14px}.top.stuck .seg button{min-height:32px;padding:0 14px}.top.stuck .pips i{width:11px;height:11px}}
+html{scroll-padding-top:calc(var(--hh,0px) + 12px)}
 .top .in{max-width:1760px;margin:auto;display:flex;flex-wrap:wrap;gap:18px 32px;align-items:flex-end;justify-content:space-between}
 h1{font:700 clamp(30px,4vw,44px)/1.05 "Inter Tight",Inter,sans-serif;letter-spacing:-.02em;margin:0;text-wrap:balance}
 .top p{margin:8px 0 0;color:var(--pale);max-width:46ch}
@@ -43,7 +50,7 @@ h1{font:700 clamp(30px,4vw,44px)/1.05 "Inter Tight",Inter,sans-serif;letter-spac
 @keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 main{max-width:1760px;margin:auto;padding:24px max(3vw,16px) 96px;display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
 .build{background:var(--g);color:#fff;border-radius:14px;padding:clamp(16px,2.4vw,26px)}
-@media(min-width:900px){main{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.build{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}
+@media(min-width:900px){main{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}.build{position:sticky;top:calc(var(--hh,0px) + 16px);max-height:calc(100vh - var(--hh,0px) - 32px);overflow:auto}}
 .cmdbox{background:var(--deep);border-radius:10px;padding:18px 18px 14px}
 #cmd{display:block;font:500 clamp(18px,2.1vw,23px)/1.6 var(--mono);color:var(--lime);overflow-wrap:anywhere;margin:0}
 #cmd .pr,.cl .pr{color:#5fa58f;user-select:none}
@@ -129,7 +136,7 @@ h2{font:700 20px/1.2 "Inter Tight",Inter,sans-serif;margin:0 0 10px;letter-spaci
 .mini code{flex:1;font:14px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mini.show{display:flex}
 @media(min-width:900px){.mini.show{display:none}}
-@media(prefers-reduced-motion:reduce){.shake{animation:none}.tk,.switch i,.switch i::after{transition:none}}
+@media(prefers-reduced-motion:reduce){.top{transition:none}.shake{animation:none}.tk,.switch i,.switch i::after{transition:none}}
 </style>
 </head>
 <body>
@@ -745,7 +752,13 @@ async function copy(b,txt,node){
   catch(err){const r=document.createRange();r.selectNodeContents(node);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Selected: press Ctrl+C"}
   setTimeout(()=>b.textContent=lbl,1600);
 }
-const io=new IntersectionObserver(([en])=>$("mini").classList.toggle("show",!en.isIntersecting));io.observe($("cmdbox"));
+/* Frozen banner: it stays at the top, and slims down once the page scrolls. */
+const top_=document.querySelector(".top");let io,ioH=-1;
+function watchCmd(h){if(h===ioH)return;ioH=h;if(io)io.disconnect();io=new IntersectionObserver(([en])=>$("mini").classList.toggle("show",!en.isIntersecting),{rootMargin:`-${h}px 0px 0px 0px`});io.observe($("cmdbox"))}
+function setHH(){const h=Math.round(top_.getBoundingClientRect().height);document.documentElement.style.setProperty("--hh",h+"px");watchCmd(h)}
+setHH();if(window.ResizeObserver)new ResizeObserver(setHH).observe(top_);
+const stick=()=>{const y=window.scrollY,on=top_.classList.contains("stuck");if(!on&&y>120)top_.classList.add("stuck");else if(on&&y<20)top_.classList.remove("stuck")};
+addEventListener("scroll",stick,{passive:true});stick();
 syncDst();
 all();
 }
