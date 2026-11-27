@@ -314,7 +314,13 @@ const esc=v=>String(v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;
 const q=v=>v===""?"''":/^[A-Za-z0-9_@%+=:,.\/~-]+$/.test(v)?v:"'"+v.replace(/'/g,"'\\''")+"'";
 const selF=()=>S.sel[S.cmd].map(id=>IDX[S.cmd][id]).filter(Boolean).sort((a,b)=>a.i-b.i);
 const has=id=>S.sel[S.cmd].includes(id);
-const arcName=()=>{const a=X.tar.arc.trim();if(a)return a;const c=Object.keys(COMP).find(has),w=words(X.tar.files)[0]||"";let nm=w.replace(/\/+$/,"").split("/").pop();if(/^\.+$/.test(nm))nm="";nm=nm.replace(/[^\w.-]+/g,"_");return (tP()?EX.tarDir:"")+(nm?nm+"-":"")+"backup"+(c?COMP[c][1]:".tar")};
+const arcName=()=>{const a=X.tar.arc.trim(),c=Object.keys(COMP).find(has),ext=c?COMP[c][1]:".tar";
+  const w=words(X.tar.files)[0]||"";let nm=w.replace(/\/+$/,"").split("/").pop();if(/^\.+$/.test(nm))nm="";nm=nm.replace(/[^\w.-]+/g,"_");const auto=(nm?nm+"-":"")+"backup"+ext;
+  if(!a)return (tP()?EX.tarDir:"")+auto;
+  /* A folder (trailing /) gets the automatic file name; a name with no archive extension gets one added. */
+  if(a.endsWith("/"))return a+auto;
+  const base=a.split("/").pop();if(!/\.(tar|tgz|taz|tbz2?|tb2|txz|tzst|tlz|gz|bz2|xz|zst|lz|lzma|lz4|Z)$/i.test(base))return a+ext;
+  return a};
 const valOf=f=>S.cmd==="tar"&&f.id==="--file"?arcName():(S.val[S.cmd+f.id]||DEF[S.cmd+f.id]||"");
 const isRemote=v=>/^[^\/\s:]+:/.test(v);
 const words=v=>v.trim()?v.trim().split(/\s+/):[];
